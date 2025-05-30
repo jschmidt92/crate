@@ -7,5 +7,5 @@ pub struct Actor {
     pub phone: Option<String>,
     pub bank: Option<f64>,
     pub cash: Option<f64>,
-    pub state: Option<String>
+    pub state: Option<String>,
 }

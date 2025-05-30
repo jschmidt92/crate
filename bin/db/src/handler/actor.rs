@@ -1,6 +1,6 @@
+use forge_models::actor::Actor;
 use tokio::spawn;
 use tokio::time::Duration;
-use forge_models::actor::Actor;
 
 use crate::events::ForgeEvent;
 use crate::messaging::MessagingSystem;
@@ -10,13 +10,13 @@ impl Actor {
         Self {
             uid,
             position: None,
-            direction: None, 
+            direction: None,
             stance: None,
             email: None,
             phone: None,
             bank: 0.0,
             cash: 0.0,
-            state: None
+            state: None,
         }
     }
 

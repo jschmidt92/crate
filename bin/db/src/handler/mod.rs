@@ -1,30 +1,22 @@
+mod actor;
 mod events;
 mod messaging;
 
+use bin::db::src::handler::actor::register_actor_handlers;
+
+use crate::actor::Actor;
 use crate::events::ForgeEvent;
 use crate::messaging::MessagingSystem;
+
+use std::error::Error;
 use tokio::time::{self, Duration};
 use tokio::{signal, spawn};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn Error>> {
     let mut msq = MessagingSystem::new();
 
-    msq.register_handler("Greet", |event| async move {
-        if let ForgeEvent::Greet(name) = event {
-            // TODO: implement
-        }
-    });
-    msq.register_handler("HashGetAll", |event| async move {
-        if let ForgeEvent::HGetAll(key) = event {
-            // TODO: implement
-        }
-    });
-    msq.register_handler("HashGet", |event| async move {
-        if let ForgeEvent::HGet { key, field } = event {
-            // TODO: implement
-        }
-    });
+    register_actor_handlers(&mut msq);
 
     let event_sender = msq.get_sender();
 

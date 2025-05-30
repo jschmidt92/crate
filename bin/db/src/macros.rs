@@ -15,5 +15,5 @@ macro_rules! hash_get_and_respond {
                 // TODO: implement
             }
         }
-    }
+    };
 }
