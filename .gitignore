@@ -1,0 +1,53 @@
+# HEMTT
+hemtt.exe
+.hemtt/missions/~*
+.hemttout/
+releases/
+
+# Textures
+Exports/
+*.spp
+*.spp.painter_lock
+*.psd
+
+# Other
+*.biprivatekey
+*.db
+*.dll
+*.dylib
+*.exe
+*.pbo
+*.so
+*.sqfc
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.sln
+*.swp
+*.swo
+*~
+
+# Rust
+debug/
+target/
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# Misc
+build/
+dist/
+docus/.nuxt/
+docus/.output/
+docus/.data/
+docus/.nitro/
+node_modules/
+promo/
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db

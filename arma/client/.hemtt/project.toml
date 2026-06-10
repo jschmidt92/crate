@@ -1,0 +1,24 @@
+name = "forge-client"
+author = "IDSolutions"
+prefix = "forge_client"
+mainprefix = "forge"
+
+[version]
+path = "addons/main/script_version.hpp"
+git_hash = 0
+
+[files]
+include = [
+    "mod.cpp",
+    "meta.cpp",
+    "logo_forge_client.png",
+    "logo_forge_client_over.png",
+    "logo_forge_client_ca.paa",
+    "logo_forge_client_over_ca.paa",
+    "LICENSE.md",
+    "README.md"
+]
+exclude = []
+
+[properties]
+author = "IDSolutions"

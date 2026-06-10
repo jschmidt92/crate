@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Project name="MOD_ACRONYM">
+    <Package name="Main">
+        <Key ID="STR_forge_mod_main_displayName">
+            <English>Main</English>
+        </Key>
+        <Key ID="STR_forge_mod_main_url">
+            <English>https://github.com/jschmidt92/mod</English>
+            <Czech>https://github.com/jschmidt92/mod</Czech>
+            <French>https://github.com/jschmidt92/mod</French>
+            <Spanish>https://github.com/jschmidt92/mod</Spanish>
+            <Italian>https://github.com/jschmidt92/mod</Italian>
+            <Polish>https://github.com/jschmidt92/mod</Polish>
+            <Portuguese>https://github.com/jschmidt92/mod</Portuguese>
+            <Russian>https://github.com/jschmidt92/mod</Russian>
+            <German>https://github.com/jschmidt92/mod</German>
+            <Korean>https://github.com/jschmidt92/mod</Korean>
+            <Japanese>https://github.com/jschmidt92/mod</Japanese>
+            <Chinese>https://github.com/jschmidt92/mod</Chinese>
+            <Chinesesimp>https://github.com/jschmidt92/mod</Chinesesimp>
+            <Turkish>https://github.com/jschmidt92/mod</Turkish>
+        </Key>
+    </Package>
+</Project>
