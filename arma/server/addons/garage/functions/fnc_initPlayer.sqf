@@ -32,6 +32,7 @@ if !(_garage isEqualType createHashMap) exitWith {
     createHashMap
 };
 
+[CRPC(garage,responseInitGarage), [_garage], _player] call CFUNC(targetEvent);
 [SRPC(v_garage,initPlayer), [_player]] call CFUNC(localEvent);
 
 _garage

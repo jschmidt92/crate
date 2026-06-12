@@ -3,5 +3,5 @@
 [QGVAR(responseInitBank), {
     params [["_bank", createHashMap, [createHashMap]]];
     if (_bank isEqualTo createHashMap) exitWith {};
-    GVAR(profile) = _bank;
+    GVAR(bankSnapshot) = _bank;
 }] call CFUNC(addEventHandler);

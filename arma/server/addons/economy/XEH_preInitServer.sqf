@@ -15,17 +15,17 @@ FUNC(getFuelType) = {
 
     private _plate = GETVAR(_target,EGVAR(garage,plate),"");
     private _fuelType = [_target] call FUNC(getFuelType);
-    EXTCALL("fuel:started",[ARR_5(netID _source,netID _target,getPlayerUID _unit,_plate,_fuelType)]);
+    EXTCALL("fuel:started",[ARR_5(netId _source,netId _target,getPlayerUID _unit,_plate,_fuelType)]);
 }] call CFUNC(addEventHandler);
 
 [QGVAR(FuelTick), {
     params ["_source", "_target", "_amount"];
-    EXTCALL("fuel:tick",[ARR_3(netID _source,netID _target,_amount)]);
+    EXTCALL("fuel:tick",[ARR_3(netId _source,netId _target,_amount)]);
 }] call CFUNC(addEventHandler);
 
 [QGVAR(FuelStop), {
     params ["_source", "_target"];
-    EXTCALL("fuel:stopped",[ARR_2(netID _source,netID _target)]);
+    EXTCALL("fuel:stopped",[ARR_2(netId _source,netId _target)]);
 }] call CFUNC(addEventHandler);
 
 addMissionEventHandler ["ExtensionCallback", {

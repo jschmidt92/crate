@@ -3,5 +3,5 @@
 [QGVAR(responseInitGarage), {
     params [["_garage", createHashMap, [createHashMap]]];
     if (_garage isEqualTo createHashMap) exitWith {};
-    GVAR(profile) = _garage;
+    GVAR(garageSnapshot) = _garage;
 }] call CFUNC(addEventHandler);

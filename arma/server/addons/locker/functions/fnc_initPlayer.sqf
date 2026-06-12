@@ -32,6 +32,7 @@ if !(_locker isEqualType createHashMap) exitWith {
     createHashMap
 };
 
+[CRPC(locker,responseInitLocker), [_locker], _player] call CFUNC(targetEvent);
 [SRPC(v_locker,initPlayer), [_player]] call CFUNC(localEvent);
 
 _locker

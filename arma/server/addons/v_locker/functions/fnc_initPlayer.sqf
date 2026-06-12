@@ -40,4 +40,6 @@ if !(_virtualLocker isEqualType createHashMap) exitWith {
     createHashMap
 };
 
+[CRPC(v_locker,responseInitVLocker), [_virtualLocker], _player] call CFUNC(targetEvent);
+
 _virtualLocker

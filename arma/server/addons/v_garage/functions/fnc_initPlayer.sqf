@@ -42,6 +42,7 @@ if !(_virtualGarage isEqualType createHashMap) exitWith {
     createHashMap
 };
 
+[CRPC(v_garage,responseInitVGarage), [_virtualGarage], _player] call CFUNC(targetEvent);
 [SRPC(locker,initPlayer), [_player]] call CFUNC(localEvent);
 
 _virtualGarage

@@ -3,5 +3,5 @@
 [QGVAR(responseInitLocker), {
     params [["_locker", createHashMap, [createHashMap]]];
     if (_locker isEqualTo createHashMap) exitWith {};
-    GVAR(profile) = _locker;
+    GVAR(lockerSnapshot) = _locker;
 }] call CFUNC(addEventHandler);

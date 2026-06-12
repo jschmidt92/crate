@@ -50,6 +50,7 @@ if !(_bank isEqualType createHashMap) exitWith {
     createHashMap
 };
 
+[CRPC(bank,responseInitBank), [_bank], _player] call CFUNC(targetEvent);
 [SRPC(garage,initPlayer), [_player]] call CFUNC(localEvent);
 
 _bank
