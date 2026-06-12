@@ -22,6 +22,18 @@ addMissionEventHandler ["PlayerConnected", {
     }, [_uid]] call CFUNC(waitUntilAndExecute);
 }];
 
+addMissionEventHandler ["HandleDisconnect", {
+    params [
+        ["_player", objNull, [objNull]],
+        ["_id", 0, [0]],
+        ["_uid", "", [""]],
+        ["_name", "", [""]]
+    ];
+
+    [QGVAR(disconnectPlayer), [_player, _uid]] call CFUNC(localEvent);
+    false
+}];
+
 {
     [QGVAR(initPlayer), [_x]] call CFUNC(localEvent);
 } forEach allPlayers;

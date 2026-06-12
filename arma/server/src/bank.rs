@@ -1,13 +1,24 @@
 use crate::log;
 use arma_rs::Group;
-use forge_lib::services::create_player_account;
+use forge_lib::{
+    models::{Money, PlayerBankProfileView},
+    repositories::InMemoryBankRepository,
+    services::BankService,
+    shared::BankError,
+};
+use std::sync::LazyLock;
+
+static BANK_SERVICE: LazyLock<BankService<InMemoryBankRepository>> =
+    LazyLock::new(|| BankService::new(InMemoryBankRepository::new()));
 
 pub fn group() -> Group {
-    Group::new().command("init", init_bank)
+    Group::new()
+        .command("init", init_bank)
+        .command("disconnect", disconnect_bank)
 }
 
 fn init_bank(uid: String, starting_cash: String, starting_bank: String) -> String {
-    match create_player_account(&uid, &starting_cash, &starting_bank) {
+    match BANK_SERVICE.init_player_account(&uid, &starting_cash, &starting_bank) {
         Ok(profile) => match serde_json::to_string(&profile) {
             Ok(json) => json,
             Err(error) => {
@@ -20,4 +31,20 @@ fn init_bank(uid: String, starting_cash: String, starting_bank: String) -> Strin
             format!("Error: {error}")
         }
     }
+}
+
+fn disconnect_bank(uid: String) -> String {
+    match BANK_SERVICE.disconnect_player_account(&uid) {
+        Ok(()) => "OK".to_string(),
+        Err(error) => {
+            log::error(format_args!(
+                "failed to disconnect bank profile {uid}: {error}"
+            ));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn deposit_payday(uid: &str, amount: Money) -> Result<PlayerBankProfileView, BankError> {
+    BANK_SERVICE.deposit_to_account(uid, amount)
 }

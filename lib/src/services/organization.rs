@@ -1,0 +1,525 @@
+use crate::{
+    models::{
+        Money, Organization, OrganizationAction, OrganizationKind, OrganizationPayday,
+        OrganizationView, VGarage, VLocker,
+    },
+    repositories::OrganizationRepository,
+    shared::OrganizationError,
+};
+
+#[derive(Clone)]
+pub struct OrganizationService<R> {
+    repository: R,
+}
+
+impl<R> OrganizationService<R>
+where
+    R: OrganizationRepository,
+{
+    pub const fn new(repository: R) -> Self {
+        Self { repository }
+    }
+
+    pub fn create_default_org(&self) -> Result<Organization, OrganizationError> {
+        self.create_default_org_with_starting("0.00", &VGarage::default(), &VLocker::default())
+    }
+
+    pub fn create_default_org_with_starting(
+        &self,
+        starting_bank: &str,
+        virtual_garage: &VGarage,
+        virtual_locker: &VLocker,
+    ) -> Result<Organization, OrganizationError> {
+        if let Some(organization) = self.repository.find_by_id("default")? {
+            return Ok(organization);
+        }
+
+        let bank = parse_starting_money(starting_bank)?;
+        self.repository
+            .save(Organization::default_org_with_starting(
+                bank,
+                virtual_garage.clone(),
+                virtual_locker.clone(),
+            ))
+    }
+
+    pub fn create_player_org(
+        &self,
+        id: &str,
+        name: &str,
+        ceo_uid: &str,
+    ) -> Result<Organization, OrganizationError> {
+        validate_org_id(id)?;
+        validate_uid(ceo_uid)?;
+
+        self.repository
+            .save(Organization::player_org(id, name, ceo_uid))
+    }
+
+    pub fn get(&self, id: &str) -> Result<Option<Organization>, OrganizationError> {
+        validate_org_id(id)?;
+        self.repository.find_by_id(id)
+    }
+
+    pub fn get_by_member_uid(&self, uid: &str) -> Result<Option<Organization>, OrganizationError> {
+        validate_uid(uid)?;
+        self.repository.find_by_member_uid(uid)
+    }
+
+    pub fn add_member(
+        &self,
+        organization_id: &str,
+        uid: &str,
+    ) -> Result<Organization, OrganizationError> {
+        let mut organization = self.require_org(organization_id)?;
+        validate_uid(uid)?;
+
+        if !organization.has_member(uid) {
+            organization
+                .members
+                .push(crate::models::OrganizationMember::new(
+                    uid,
+                    crate::models::OrganizationRole::Member,
+                ));
+        }
+
+        self.repository.save(organization)
+    }
+
+    pub fn require_member(
+        &self,
+        uid: &str,
+        organization_id: &str,
+    ) -> Result<Organization, OrganizationError> {
+        let organization = self.require_org(organization_id)?;
+        validate_uid(uid)?;
+
+        if !organization.has_member(uid) {
+            return Err(OrganizationError::NotMember);
+        }
+
+        Ok(organization)
+    }
+
+    pub fn require_ceo(
+        &self,
+        uid: &str,
+        organization_id: &str,
+    ) -> Result<Organization, OrganizationError> {
+        let organization = self.require_member(uid, organization_id)?;
+
+        if !organization.is_ceo(uid) {
+            return Err(OrganizationError::NotCeo);
+        }
+
+        Ok(organization)
+    }
+
+    pub fn require_action_allowed(
+        &self,
+        uid: &str,
+        organization_id: &str,
+        action: OrganizationAction,
+    ) -> Result<Organization, OrganizationError> {
+        let organization = self.require_ceo(uid, organization_id)?;
+
+        if organization.kind == OrganizationKind::Default && action.requires_admin_policy() {
+            return Err(OrganizationError::RestrictedDefaultOrgAction);
+        }
+
+        Ok(organization)
+    }
+
+    pub fn require_action_allowed_with_default_ceo_slot(
+        &self,
+        uid: &str,
+        organization_id: &str,
+        action: OrganizationAction,
+        in_default_ceo_slot: bool,
+    ) -> Result<Organization, OrganizationError> {
+        let organization = self.require_org(organization_id)?;
+        validate_uid(uid)?;
+
+        if organization.kind != OrganizationKind::Default {
+            return self.require_action_allowed(uid, organization_id, action);
+        }
+
+        if !in_default_ceo_slot {
+            return Err(OrganizationError::NotCeo);
+        }
+
+        if action.requires_admin_policy() {
+            return Err(OrganizationError::RestrictedDefaultOrgAction);
+        }
+
+        Ok(organization)
+    }
+
+    pub fn require_spend_allowed(
+        &self,
+        uid: &str,
+        organization_id: &str,
+    ) -> Result<Organization, OrganizationError> {
+        self.require_action_allowed(uid, organization_id, OrganizationAction::SpendFunds)
+    }
+
+    pub fn require_buy_unlock_allowed(
+        &self,
+        uid: &str,
+        organization_id: &str,
+    ) -> Result<Organization, OrganizationError> {
+        self.require_action_allowed(uid, organization_id, OrganizationAction::BuyOrgUnlock)
+    }
+
+    pub fn require_spend_allowed_with_default_ceo_slot(
+        &self,
+        uid: &str,
+        organization_id: &str,
+        in_default_ceo_slot: bool,
+    ) -> Result<Organization, OrganizationError> {
+        self.require_action_allowed_with_default_ceo_slot(
+            uid,
+            organization_id,
+            OrganizationAction::SpendFunds,
+            in_default_ceo_slot,
+        )
+    }
+
+    pub fn require_buy_unlock_allowed_with_default_ceo_slot(
+        &self,
+        uid: &str,
+        organization_id: &str,
+        in_default_ceo_slot: bool,
+    ) -> Result<Organization, OrganizationError> {
+        self.require_action_allowed_with_default_ceo_slot(
+            uid,
+            organization_id,
+            OrganizationAction::BuyOrgUnlock,
+            in_default_ceo_slot,
+        )
+    }
+
+    pub fn issue_payday(
+        &self,
+        uid: &str,
+        organization_id: &str,
+        amount: &str,
+        in_default_ceo_slot: bool,
+    ) -> Result<OrganizationPayday, OrganizationError> {
+        let mut organization = self.require_action_allowed_with_default_ceo_slot(
+            uid,
+            organization_id,
+            OrganizationAction::IssuePayday,
+            in_default_ceo_slot,
+        )?;
+        let amount = parse_starting_money(amount)?;
+        if !amount.is_positive() {
+            return Err(OrganizationError::InvalidAmount);
+        }
+
+        let mut recipients = Vec::new();
+        for recipient_uid in organization
+            .members
+            .iter()
+            .map(|member| member.uid.clone())
+            .filter(|member_uid| member_uid != uid)
+        {
+            validate_uid(&recipient_uid)?;
+            if !recipients.contains(&recipient_uid) {
+                recipients.push(recipient_uid);
+            }
+        }
+
+        if recipients.is_empty() {
+            return Err(OrganizationError::EmptyPayday);
+        }
+
+        let total = Money::from_cents(amount.cents() * recipients.len() as i64);
+        if organization.bank < total {
+            return Err(OrganizationError::InsufficientFunds);
+        }
+
+        organization.bank = organization.bank - total;
+        let organization = self.repository.save(organization)?;
+
+        Ok(OrganizationPayday {
+            organization: OrganizationView::from(&organization),
+            amount: amount.to_amount(),
+            recipients,
+        })
+    }
+
+    fn require_org(&self, organization_id: &str) -> Result<Organization, OrganizationError> {
+        validate_org_id(organization_id)?;
+        self.repository
+            .find_by_id(organization_id)?
+            .ok_or(OrganizationError::NotFound)
+    }
+}
+
+fn validate_org_id(id: &str) -> Result<(), OrganizationError> {
+    if id.trim().is_empty() {
+        return Err(OrganizationError::InvalidId);
+    }
+
+    Ok(())
+}
+
+fn validate_uid(uid: &str) -> Result<(), OrganizationError> {
+    if uid.trim().is_empty() {
+        return Err(OrganizationError::InvalidUid);
+    }
+
+    Ok(())
+}
+
+fn parse_starting_money(amount: &str) -> Result<Money, OrganizationError> {
+    let money = amount
+        .parse::<Money>()
+        .map_err(|_| OrganizationError::InvalidAmount)?;
+
+    if money.cents() < 0 {
+        return Err(OrganizationError::InvalidAmount);
+    }
+
+    Ok(money)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        models::{OrganizationAction, OrganizationMember, OrganizationRole},
+        repositories::InMemoryOrganizationRepository,
+    };
+
+    #[test]
+    fn default_org_has_no_player_uid_ceo_member() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        let organization = service
+            .create_default_org()
+            .expect("default org should be created");
+
+        assert!(organization.members.is_empty());
+        assert!(!organization.is_ceo("ceo-uid"));
+        assert_eq!(organization.bank, Money::ZERO);
+    }
+
+    #[test]
+    fn add_member_adds_default_org_member_once() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+
+        service
+            .add_member("default", "member-uid")
+            .expect("member should be added");
+        let organization = service
+            .add_member("default", "member-uid")
+            .expect("member add should be idempotent");
+
+        assert_eq!(organization.members.len(), 1);
+        assert!(organization.has_member("member-uid"));
+        assert!(!organization.is_ceo("member-uid"));
+    }
+
+    #[test]
+    fn default_org_uses_configured_starting_values() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        let garage = VGarage {
+            cars: vec!["B_Quadbike_01_F".to_string()],
+            ..VGarage::default()
+        };
+        let locker = VLocker {
+            weapons: vec!["hgun_P07_F".to_string()],
+            ..VLocker::default()
+        };
+
+        let organization = service
+            .create_default_org_with_starting("1000.50", &garage, &locker)
+            .expect("default org should be created");
+
+        assert_eq!(organization.bank.to_amount().as_str(), "1000.50");
+        assert_eq!(organization.virtual_garage.cars, ["B_Quadbike_01_F"]);
+        assert_eq!(organization.virtual_locker.weapons, ["hgun_P07_F"]);
+    }
+
+    #[test]
+    fn default_org_ceo_slot_can_spend_and_buy_unlocks() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+
+        assert!(
+            service
+                .require_spend_allowed_with_default_ceo_slot("ceo-uid", "default", true)
+                .is_ok()
+        );
+        assert!(
+            service
+                .require_buy_unlock_allowed_with_default_ceo_slot("ceo-uid", "default", true)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn default_org_ceo_cannot_perform_restricted_admin_actions() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+
+        let error = service
+            .require_action_allowed_with_default_ceo_slot(
+                "ceo-uid",
+                "default",
+                OrganizationAction::Rename,
+                true,
+            )
+            .expect_err("default org rename should be blocked");
+
+        assert_eq!(error, OrganizationError::RestrictedDefaultOrgAction);
+    }
+
+    #[test]
+    fn default_org_non_slot_player_cannot_spend() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+
+        assert_eq!(
+            service
+                .require_spend_allowed_with_default_ceo_slot("member-uid", "default", false)
+                .expect_err("non slot player cannot spend"),
+            OrganizationError::NotCeo
+        );
+    }
+
+    #[test]
+    fn player_org_ceo_can_perform_admin_actions() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_player_org("org-1", "Player Org", "ceo-uid")
+            .expect("player org should be created");
+
+        assert!(
+            service
+                .require_action_allowed("ceo-uid", "org-1", OrganizationAction::Rename)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn member_can_access_but_cannot_spend() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        let mut organization = Organization::player_org("org-1", "Player Org", "ceo-uid");
+        organization.members.push(OrganizationMember::new(
+            "member-uid",
+            OrganizationRole::Member,
+        ));
+        service
+            .repository
+            .save(organization)
+            .expect("org should be saved");
+
+        assert!(service.require_member("member-uid", "org-1").is_ok());
+        assert_eq!(
+            service
+                .require_spend_allowed("member-uid", "org-1")
+                .expect_err("member cannot spend"),
+            OrganizationError::NotCeo
+        );
+    }
+
+    #[test]
+    fn default_org_ceo_slot_can_issue_payday_to_members() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org_with_starting("100.00", &VGarage::default(), &VLocker::default())
+            .expect("default org should be created");
+        service
+            .add_member("default", "ceo-uid")
+            .expect("issuer should be added");
+        service
+            .add_member("default", "member-1")
+            .expect("member should be added");
+        service
+            .add_member("default", "member-2")
+            .expect("member should be added");
+
+        let payday = service
+            .issue_payday("ceo-uid", "default", "25.00", true)
+            .expect("payday should be issued");
+
+        assert_eq!(payday.amount.as_str(), "25.00");
+        assert_eq!(payday.recipients, ["member-1", "member-2"]);
+        assert_eq!(payday.organization.bank.as_str(), "50.00");
+    }
+
+    #[test]
+    fn payday_uses_org_members() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org_with_starting("100.00", &VGarage::default(), &VLocker::default())
+            .expect("default org should be created");
+        service
+            .add_member("default", "ceo-uid")
+            .expect("issuer should be added");
+        service
+            .add_member("default", "member-1")
+            .expect("member should be added");
+        service
+            .add_member("default", "member-2")
+            .expect("member should be added");
+
+        let payday = service
+            .issue_payday("ceo-uid", "default", "25.00", true)
+            .expect("payday should be issued");
+
+        assert_eq!(payday.recipients, ["member-1", "member-2"]);
+        assert_eq!(payday.organization.bank.as_str(), "50.00");
+    }
+
+    #[test]
+    fn payday_rejects_insufficient_org_funds() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org_with_starting("10.00", &VGarage::default(), &VLocker::default())
+            .expect("default org should be created");
+        service
+            .add_member("default", "member-1")
+            .expect("member should be added");
+
+        assert_eq!(
+            service
+                .issue_payday("ceo-uid", "default", "25.00", true)
+                .expect_err("payday should fail"),
+            OrganizationError::InsufficientFunds
+        );
+    }
+
+    #[test]
+    fn player_org_payday_uses_member_recipients() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_player_org("org-1", "Player Org", "ceo-uid")
+            .expect("player org should be created");
+        let mut organization = service.get("org-1").unwrap().unwrap();
+        organization.bank = Money::from_cents(10_000);
+        organization.members.push(OrganizationMember::new(
+            "member-uid",
+            OrganizationRole::Member,
+        ));
+        service.repository.save(organization).unwrap();
+
+        let payday = service
+            .issue_payday("ceo-uid", "org-1", "25.00", false)
+            .expect("payday should be issued");
+
+        assert_eq!(payday.recipients, ["member-uid"]);
+        assert_eq!(payday.organization.bank.as_str(), "75.00");
+    }
+}

@@ -11,6 +11,7 @@ static LOCKER_SERVICE: LazyLock<LockerService<InMemoryLockerRepository>> =
 pub fn group() -> Group {
     Group::new()
         .command("init", init_locker)
+        .command("disconnect", disconnect_locker)
         .command("get", get_locker)
         .command("save", save_locker)
         .command("delete", delete_locker)
@@ -21,6 +22,16 @@ fn init_locker(uid: String) -> String {
         Ok(locker) => serialize_locker(&locker),
         Err(error) => {
             log::error(format_args!("failed to init locker {uid}: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+fn disconnect_locker(uid: String) -> String {
+    match LOCKER_SERVICE.disconnect(&uid) {
+        Ok(()) => "OK".to_string(),
+        Err(error) => {
+            log::error(format_args!("failed to disconnect locker {uid}: {error}"));
             format!("Error: {error}")
         }
     }

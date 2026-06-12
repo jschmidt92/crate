@@ -63,6 +63,10 @@ where
         validate_uid(uid)?;
         self.repository.delete(uid)
     }
+
+    pub fn disconnect(&self, snapshot: ActorSnapshot) -> Result<Actor, ActorError> {
+        self.init_or_create(snapshot).map(|result| result.actor)
+    }
 }
 
 fn validate_snapshot(snapshot: &ActorSnapshot) -> Result<(), ActorError> {

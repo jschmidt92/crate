@@ -1,1 +1,2 @@
+PREP(disconnectPlayer);
 PREP(initPlayer);

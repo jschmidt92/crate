@@ -37,6 +37,10 @@ if !(_actor isEqualType createHashMap) exitWith {
 };
 
 [CRPC(actor,responseInitActor), [_actor], _player] call CFUNC(targetEvent);
-[SRPC(bank,initPlayer), [_player]] call CFUNC(localEvent);
+[
+    getPlayerUID _player,
+    _actor getOrDefault ["organization", "default"]
+] call EFUNC(organization,addPlayerMember);
+[SRPC(bank,initPlayer), [getPlayerUID _player]] call CFUNC(localEvent);
 
 _actor

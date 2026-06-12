@@ -2,6 +2,7 @@
 pub enum BankError {
     InvalidAmount,
     InvalidActorUid,
+    Repository(String),
 }
 
 impl std::fmt::Display for BankError {
@@ -9,11 +10,18 @@ impl std::fmt::Display for BankError {
         match self {
             Self::InvalidAmount => f.write_str("invalid transaction amount"),
             Self::InvalidActorUid => f.write_str("invalid actor uid"),
+            Self::Repository(error) => write!(f, "bank repository error: {error}"),
         }
     }
 }
 
 impl std::error::Error for BankError {}
+
+impl From<String> for BankError {
+    fn from(value: String) -> Self {
+        Self::Repository(value)
+    }
+}
 
 pub trait StorageError<T> {
     fn map_storage_error(self) -> Result<T, String>;
@@ -46,6 +54,47 @@ impl std::fmt::Display for ActorError {
 }
 
 impl std::error::Error for ActorError {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OrganizationError {
+    InvalidId,
+    InvalidAmount,
+    InvalidUid,
+    EmptyPayday,
+    InsufficientFunds,
+    NotFound,
+    NotMember,
+    NotCeo,
+    RestrictedDefaultOrgAction,
+    Repository(String),
+}
+
+impl std::fmt::Display for OrganizationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidId => f.write_str("invalid organization id"),
+            Self::InvalidAmount => f.write_str("invalid organization amount"),
+            Self::InvalidUid => f.write_str("invalid organization member uid"),
+            Self::EmptyPayday => f.write_str("organization payday has no recipients"),
+            Self::InsufficientFunds => f.write_str("organization has insufficient funds"),
+            Self::NotFound => f.write_str("organization not found"),
+            Self::NotMember => f.write_str("player is not an organization member"),
+            Self::NotCeo => f.write_str("player is not the organization CEO"),
+            Self::RestrictedDefaultOrgAction => {
+                f.write_str("action is restricted for the default organization")
+            }
+            Self::Repository(error) => write!(f, "organization repository error: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for OrganizationError {}
+
+impl From<String> for OrganizationError {
+    fn from(value: String) -> Self {
+        Self::Repository(value)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LockerError {

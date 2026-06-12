@@ -6,7 +6,11 @@ Copy `forge_mission_config.hpp` into the mission folder and include it from `des
 #include "forge_mission_config.hpp"
 ```
 
-`CfgForgeMission >> Actor` controls first-login actor defaults. Money values should stay quoted strings so Arma does not round large or precise values before Rust receives them.
+`CfgForgeMission >> Actor` controls first-login actor defaults. Money values should stay quoted strings so Arma does not round large or precise values before Rust receives them. New players start in the framework default organization.
+
+The default organization is a framework convention. Its id is `default`, and its limited CEO slot is the single placed playable unit with variable name `ceo`.
+
+`CfgForgeMission >> DefaultOrganization` controls default org starting state. Money values should stay quoted strings. Use `startingBank` for org funds, `paydayAmount` for the default org payday amount, `Locker` for default organization virtual arsenal unlocks, and `VirtualGarage` for default organization virtual garage unlocks.
 
 Virtual arsenal unlocks use the mission config label `Locker`, matching the previous framework shape. Use category arrays under `CfgForgeMission >> Actor >> Locker`, for example `weapons[] = {"hgun_P07_F"};`.
 

@@ -31,14 +31,6 @@ if (_configuredLoadout isNotEqualTo []) then {
     _loadout = _configuredLoadout;
 };
 
-private _organization = "default";
-if (isText (_actorConfig >> "organization")) then {
-    _organization = getText (_actorConfig >> "organization");
-};
-if (_organization isEqualTo "") then {
-    _organization = "default";
-};
-
 createHashMapFromArray [
     ["uid", getPlayerUID _player],
     ["name", name _player],
@@ -48,6 +40,6 @@ createHashMapFromArray [
     ["stance", stance _player],
     ["rank", rank _player],
     ["life_state", lifeState _player],
-    ["organization", _organization],
+    ["organization", "default"],
     ["holster", true]
 ]

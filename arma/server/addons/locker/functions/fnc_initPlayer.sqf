@@ -11,19 +11,19 @@
  * Initializes the player's owned locker, then continues the player initialization chain.
  *
  * Arguments:
- * 0: [OBJECT] - Player to initialize
+ * 0: [STRING] - Player UID
  * Return Value:
  * Locker profile [HASHMAP]
  *
  * Example:
- * [_player] call forge_server_locker_fnc_initPlayer;
+ * [_uid] call forge_server_locker_fnc_initPlayer;
  */
 
-params [["_player", objNull, [objNull]]];
+params [["_uid", "", [""]]];
 
-if (isNull _player) exitWith { createHashMap };
+if (_uid isEqualTo "") exitWith { createHashMap };
 
-["locker:init", [getPlayerUID _player]] call EFUNC(extension,extCall) params ["_result", "_success"];
+["locker:init", [_uid]] call EFUNC(extension,extCall) params ["_result", "_success"];
 if !(_success) exitWith { createHashMap };
 
 private _locker = fromJSON _result;
@@ -32,7 +32,10 @@ if !(_locker isEqualType createHashMap) exitWith {
     createHashMap
 };
 
-[CRPC(locker,responseInitLocker), [_locker], _player] call CFUNC(targetEvent);
-[SRPC(v_locker,initPlayer), [_player]] call CFUNC(localEvent);
+private _player = [_uid] call EFUNC(common,getPlayerByUID);
+if !(isNull _player) then {
+    [CRPC(locker,responseInitLocker), [_locker], _player] call CFUNC(targetEvent);
+};
+[SRPC(v_locker,initPlayer), [_uid]] call CFUNC(localEvent);
 
 _locker

@@ -13,6 +13,7 @@ static V_GARAGE_SERVICE: LazyLock<VGarageService<InMemoryVGarageRepository>> =
 pub fn group() -> Group {
     Group::new()
         .command("init", init_garage)
+        .command("disconnect", disconnect_garage)
         .command("get", get_garage)
         .command("save", save_garage)
         .command("delete", delete_garage)
@@ -33,6 +34,18 @@ fn init_garage(uid: String, unlocks_json: String) -> String {
         Ok(garage) => serialize_garage(&garage),
         Err(error) => {
             log::error(format_args!("failed to init virtual garage {uid}: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+fn disconnect_garage(uid: String) -> String {
+    match V_GARAGE_SERVICE.disconnect(&uid) {
+        Ok(()) => "OK".to_string(),
+        Err(error) => {
+            log::error(format_args!(
+                "failed to disconnect virtual garage {uid}: {error}"
+            ));
             format!("Error: {error}")
         }
     }

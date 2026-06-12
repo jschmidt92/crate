@@ -11,18 +11,18 @@
  * Initializes the player's bank profile, then continues the player initialization chain.
  *
  * Arguments:
- * 0: [OBJECT] - Player to initialize
+ * 0: [STRING] - Player UID
  *
  * Return Value:
  * Bank profile [HASHMAP]
  *
  * Example:
- * [_player] call forge_server_bank_fnc_initPlayer;
+ * [_uid] call forge_server_bank_fnc_initPlayer;
  */
 
-params [["_player", objNull, [objNull]]];
+params [["_uid", "", [""]]];
 
-if (isNull _player) exitWith { createHashMap };
+if (_uid isEqualTo "") exitWith { createHashMap };
 
 private _actorConfig = missionConfigFile >> "CfgForgeMission" >> "Actor";
 private _startingCash = "0.00";
@@ -41,7 +41,7 @@ if (isNumber (_actorConfig >> "startingBank")) then {
     _startingBank = str getNumber (_actorConfig >> "startingBank");
 };
 
-["bank:init", [getPlayerUID _player, _startingCash, _startingBank]] call EFUNC(extension,extCall) params ["_result", "_success"];
+["bank:init", [_uid, _startingCash, _startingBank]] call EFUNC(extension,extCall) params ["_result", "_success"];
 if !(_success) exitWith { createHashMap };
 
 private _bank = fromJSON _result;
@@ -50,7 +50,10 @@ if !(_bank isEqualType createHashMap) exitWith {
     createHashMap
 };
 
-[CRPC(bank,responseInitBank), [_bank], _player] call CFUNC(targetEvent);
-[SRPC(garage,initPlayer), [_player]] call CFUNC(localEvent);
+private _player = [_uid] call EFUNC(common,getPlayerByUID);
+if !(isNull _player) then {
+    [CRPC(bank,responseInitBank), [_bank], _player] call CFUNC(targetEvent);
+};
+[SRPC(garage,initPlayer), [_uid]] call CFUNC(localEvent);
 
 _bank

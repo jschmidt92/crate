@@ -4,8 +4,28 @@
  */
 
 class CfgForgeMission {
+    class DefaultOrganization {
+        startingBank = "0.00";
+        paydayAmount = "0.00";
+
+        class Locker {
+            items[] = {};
+            weapons[] = {};
+            magazines[] = {};
+            backpacks[] = {};
+        };
+
+        class VirtualGarage {
+            cars[] = {};
+            armor[] = {};
+            helis[] = {};
+            planes[] = {};
+            naval[] = {};
+            other[] = {};
+        };
+    };
+
     class Actor {
-        organization = "default";
         startingCash = "0.00";
         startingBank = "0.00";
         loadout[] = {

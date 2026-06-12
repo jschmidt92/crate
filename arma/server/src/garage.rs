@@ -11,6 +11,7 @@ static GARAGE_SERVICE: LazyLock<GarageService<InMemoryGarageRepository>> =
 pub fn group() -> Group {
     Group::new()
         .command("init", init_garage)
+        .command("disconnect", disconnect_garage)
         .command("get", get_garage)
         .command("save", save_garage)
         .command("delete", delete_garage)
@@ -21,6 +22,16 @@ fn init_garage(uid: String) -> String {
         Ok(garage) => serialize_garage(&garage),
         Err(error) => {
             log::error(format_args!("failed to init garage {uid}: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+fn disconnect_garage(uid: String) -> String {
+    match GARAGE_SERVICE.disconnect(&uid) {
+        Ok(()) => "OK".to_string(),
+        Err(error) => {
+            log::error(format_args!("failed to disconnect garage {uid}: {error}"));
             format!("Error: {error}")
         }
     }

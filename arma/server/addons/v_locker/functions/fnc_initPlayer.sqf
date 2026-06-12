@@ -8,20 +8,20 @@
  * Public: No
  *
  * Description:
- * Initializes the player's virtual locker unlocks and completes the player initialization chain.
+ * Initializes the player's virtual locker unlocks, merges organization unlocks for the client payload, and completes the player initialization chain.
  *
  * Arguments:
- * 0: [OBJECT] - Player to initialize
+ * 0: [STRING] - Player UID
  * Return Value:
  * Virtual locker profile [HASHMAP]
  *
  * Example:
- * [_player] call forge_server_v_locker_fnc_initPlayer;
+ * [_uid] call forge_server_v_locker_fnc_initPlayer;
  */
 
-params [["_player", objNull, [objNull]]];
+params [["_uid", "", [""]]];
 
-if (isNull _player) exitWith { createHashMap };
+if (_uid isEqualTo "") exitWith { createHashMap };
 
 private _lockerConfig = missionConfigFile >> "CfgForgeMission" >> "Actor" >> "Locker";
 private _unlocks = createHashMapFromArray [
@@ -31,7 +31,7 @@ private _unlocks = createHashMapFromArray [
     ["backpacks", getArray (_lockerConfig >> "backpacks")]
 ];
 
-["v_locker:init", [getPlayerUID _player, toJSON _unlocks]] call EFUNC(extension,extCall) params ["_result", "_success"];
+["v_locker:init", [_uid, toJSON _unlocks]] call EFUNC(extension,extCall) params ["_result", "_success"];
 if !(_success) exitWith { createHashMap };
 
 private _virtualLocker = fromJSON _result;
@@ -40,6 +40,30 @@ if !(_virtualLocker isEqualType createHashMap) exitWith {
     createHashMap
 };
 
-[CRPC(v_locker,responseInitVLocker), [_virtualLocker], _player] call CFUNC(targetEvent);
+private _organization = [_uid] call EFUNC(organization,getPlayerOrganization);
+if (_organization isEqualType createHashMap && {_organization isNotEqualTo createHashMap}) then {
+    private _playerUnlocks = _virtualLocker getOrDefault ["unlocks", createHashMap];
+    private _organizationUnlocks = _organization getOrDefault ["virtual_locker", createHashMap];
+
+    if (_playerUnlocks isEqualType createHashMap && {_organizationUnlocks isEqualType createHashMap}) then {
+        {
+            private _category = _x;
+            private _organizationClassnames = _organizationUnlocks getOrDefault [_category, []];
+            private _classNames = (_playerUnlocks getOrDefault [_category, []]) + [];
+            {
+                _classNames pushBackUnique _x;
+            } forEach _organizationClassnames;
+            _playerUnlocks set [_category, _classNames];
+        } forEach ["items", "weapons", "magazines", "backpacks"];
+
+        _virtualLocker set ["organization", _organization getOrDefault ["id", "default"]];
+        _virtualLocker set ["organization_unlocks", _organizationUnlocks];
+    };
+};
+
+private _player = [_uid] call EFUNC(common,getPlayerByUID);
+if !(isNull _player) then {
+    [CRPC(v_locker,responseInitVLocker), [_virtualLocker], _player] call CFUNC(targetEvent);
+};
 
 _virtualLocker

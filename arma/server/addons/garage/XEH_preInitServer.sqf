@@ -3,6 +3,11 @@
 if !(isMultiplayer) exitWith {};
 
 [QGVAR(initPlayer), {
-    params [["_player", objNull, [objNull]]];
-    [_player] call FUNC(initPlayer);
+    params [["_uid", "", [""]]];
+    [_uid] call FUNC(initPlayer);
+}] call CFUNC(addEventHandler);
+
+[QGVAR(disconnectPlayer), {
+    params [["_uid", "", [""]]];
+    [_uid] call FUNC(disconnectPlayer);
 }] call CFUNC(addEventHandler);

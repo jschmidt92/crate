@@ -37,6 +37,11 @@ where
         validate_uid(uid)?;
         self.repository.delete(uid)
     }
+
+    pub fn disconnect(&self, uid: &str) -> Result<(), GarageError> {
+        validate_uid(uid)?;
+        Ok(())
+    }
 }
 
 fn validate_uid(uid: &str) -> Result<(), GarageError> {

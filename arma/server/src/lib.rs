@@ -10,6 +10,7 @@ mod fuel;
 mod garage;
 mod locker;
 mod log;
+mod organization;
 mod v_garage;
 mod v_locker;
 
@@ -18,6 +19,7 @@ use bank::group as bank_group;
 use fuel::group as fuel_group;
 use garage::group as garage_group;
 use locker::group as locker_group;
+use organization::group as organization_group;
 use v_garage::group as v_garage_group;
 use v_locker::group as v_locker_group;
 
@@ -43,6 +45,7 @@ fn init() -> Extension {
         .group("fuel", fuel_group())
         .group("garage", garage_group())
         .group("locker", locker_group())
+        .group("organization", organization_group())
         .group("v_garage", v_garage_group())
         .group("v_locker", v_locker_group())
         .finish()
