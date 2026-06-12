@@ -1,22 +1,41 @@
 use crate::log;
 use arma_rs::Group;
 use forge_lib::{
-    models::PlayerVGarage, repositories::InMemoryVGarageRepository, services::VGarageService,
+    models::{PlayerVGarage, VGarage},
+    repositories::InMemoryVGarageRepository,
+    services::VGarageService,
 };
 use std::sync::LazyLock;
 
 static V_GARAGE_SERVICE: LazyLock<VGarageService<InMemoryVGarageRepository>> =
     LazyLock::new(|| VGarageService::new(InMemoryVGarageRepository::new()));
 
-pub(crate) fn service() -> &'static VGarageService<InMemoryVGarageRepository> {
-    &V_GARAGE_SERVICE
-}
-
 pub fn group() -> Group {
     Group::new()
+        .command("init", init_garage)
         .command("get", get_garage)
         .command("save", save_garage)
         .command("delete", delete_garage)
+}
+
+fn init_garage(uid: String, unlocks_json: String) -> String {
+    let unlocks = match serde_json::from_str::<VGarage>(&unlocks_json) {
+        Ok(unlocks) => unlocks,
+        Err(error) => {
+            log::error(format_args!(
+                "invalid virtual garage unlock payload: {error}"
+            ));
+            return format!("Error: invalid virtual garage unlock payload: {error}");
+        }
+    };
+
+    match V_GARAGE_SERVICE.create_actor_garage(&uid, &unlocks) {
+        Ok(garage) => serialize_garage(&garage),
+        Err(error) => {
+            log::error(format_args!("failed to init virtual garage {uid}: {error}"));
+            format!("Error: {error}")
+        }
+    }
 }
 
 fn get_garage(uid: String) -> String {

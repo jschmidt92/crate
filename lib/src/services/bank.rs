@@ -21,6 +21,22 @@ pub fn create_actor_account(
     Ok(PlayerBankProfileView::from(&profile))
 }
 
+pub fn create_player_account(
+    uid: &str,
+    starting_cash: &str,
+    starting_bank: &str,
+) -> Result<PlayerBankProfileView, BankError> {
+    if uid.trim().is_empty() {
+        return Err(BankError::InvalidActorUid);
+    }
+
+    let cash = parse_starting_money(starting_cash)?;
+    let bank = parse_starting_money(starting_bank)?;
+    let profile = PlayerBankProfile::with_starting_balances(uid.to_string(), cash, bank);
+
+    Ok(PlayerBankProfileView::from(&profile))
+}
+
 fn parse_starting_money(amount: &str) -> Result<Money, BankError> {
     let money = amount
         .parse::<Money>()
@@ -95,5 +111,15 @@ mod tests {
             create_actor_account(&actor, &starting),
             Err(BankError::InvalidAmount)
         ));
+    }
+
+    #[test]
+    fn create_player_account_uses_configured_starting_money() {
+        let profile = create_player_account("steam:local-dev", "25.00", "100.00")
+            .expect("account should be created");
+
+        assert_eq!(profile.uid, "steam:local-dev");
+        assert_eq!(profile.cash.as_str(), "25.00");
+        assert_eq!(profile.account.balance.as_str(), "100.00");
     }
 }

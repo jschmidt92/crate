@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="forge_client_v_garage">
+    <Package name="v_garage">
+        <Key ID="STR_forge_client_v_garage">
+            <English>Virtual Garage</English>
+        </Key>
+    </Package>
+</Project>

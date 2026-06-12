@@ -1,22 +1,41 @@
 use crate::log;
 use arma_rs::Group;
 use forge_lib::{
-    models::PlayerVLocker, repositories::InMemoryVLockerRepository, services::VLockerService,
+    models::{PlayerVLocker, VLocker},
+    repositories::InMemoryVLockerRepository,
+    services::VLockerService,
 };
 use std::sync::LazyLock;
 
 static V_LOCKER_SERVICE: LazyLock<VLockerService<InMemoryVLockerRepository>> =
     LazyLock::new(|| VLockerService::new(InMemoryVLockerRepository::new()));
 
-pub(crate) fn service() -> &'static VLockerService<InMemoryVLockerRepository> {
-    &V_LOCKER_SERVICE
-}
-
 pub fn group() -> Group {
     Group::new()
+        .command("init", init_locker)
         .command("get", get_locker)
         .command("save", save_locker)
         .command("delete", delete_locker)
+}
+
+fn init_locker(uid: String, unlocks_json: String) -> String {
+    let unlocks = match serde_json::from_str::<VLocker>(&unlocks_json) {
+        Ok(unlocks) => unlocks,
+        Err(error) => {
+            log::error(format_args!(
+                "invalid virtual locker unlock payload: {error}"
+            ));
+            return format!("Error: invalid virtual locker unlock payload: {error}");
+        }
+    };
+
+    match V_LOCKER_SERVICE.create_actor_locker(&uid, &unlocks) {
+        Ok(locker) => serialize_locker(&locker),
+        Err(error) => {
+            log::error(format_args!("failed to init virtual locker {uid}: {error}"));
+            format!("Error: {error}")
+        }
+    }
 }
 
 fn get_locker(uid: String) -> String {

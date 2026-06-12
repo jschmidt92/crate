@@ -48,6 +48,68 @@ impl std::fmt::Display for ActorError {
 impl std::error::Error for ActorError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LockerError {
+    InvalidUid,
+    InvalidCategory,
+    InvalidClassname,
+    InvalidAmount,
+    Repository(String),
+}
+
+impl std::fmt::Display for LockerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidUid => f.write_str("invalid locker uid"),
+            Self::InvalidCategory => f.write_str("invalid locker item category"),
+            Self::InvalidClassname => f.write_str("invalid locker item classname"),
+            Self::InvalidAmount => f.write_str("invalid locker item amount"),
+            Self::Repository(error) => write!(f, "locker repository error: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for LockerError {}
+
+impl From<String> for LockerError {
+    fn from(value: String) -> Self {
+        Self::Repository(value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GarageError {
+    InvalidUid,
+    InvalidPlate,
+    InvalidClassname,
+    InvalidFuel,
+    InvalidDamage,
+    InvalidHitPoints,
+    Repository(String),
+}
+
+impl std::fmt::Display for GarageError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidUid => f.write_str("invalid garage uid"),
+            Self::InvalidPlate => f.write_str("invalid vehicle plate"),
+            Self::InvalidClassname => f.write_str("invalid vehicle classname"),
+            Self::InvalidFuel => f.write_str("invalid vehicle fuel"),
+            Self::InvalidDamage => f.write_str("invalid vehicle damage"),
+            Self::InvalidHitPoints => f.write_str("invalid vehicle hit points"),
+            Self::Repository(error) => write!(f, "garage repository error: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for GarageError {}
+
+impl From<String> for GarageError {
+    fn from(value: String) -> Self {
+        Self::Repository(value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VLockerError {
     InvalidUid,
     Repository(String),

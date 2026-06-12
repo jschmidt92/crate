@@ -37,5 +37,6 @@ if !(_actor isEqualType createHashMap) exitWith {
 };
 
 [CRPC(actor,responseInitActor), [_actor], _player] call CFUNC(targetEvent);
+[SRPC(bank,initPlayer), [_player]] call CFUNC(localEvent);
 
 _actor
