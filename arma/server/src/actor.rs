@@ -1,7 +1,12 @@
-use crate::log;
+use crate::{log, v_garage, v_locker};
 use arma_rs::Group;
 use forge_lib::{
-    events::{EventBus, handlers::BankActorCreatedHandler},
+    events::{
+        EventBus,
+        handlers::{
+            BankActorCreatedHandler, VGarageActorCreatedHandler, VLockerActorCreatedHandler,
+        },
+    },
     models::ActorSnapshot,
     repositories::InMemoryActorRepository,
     services::ActorService,
@@ -11,8 +16,12 @@ use std::sync::LazyLock;
 static ACTOR_SERVICE: LazyLock<ActorService<InMemoryActorRepository>> =
     LazyLock::new(|| ActorService::new(InMemoryActorRepository::new()));
 
-static EVENT_BUS: LazyLock<EventBus> =
-    LazyLock::new(|| EventBus::new().subscribe(BankActorCreatedHandler));
+static EVENT_BUS: LazyLock<EventBus> = LazyLock::new(|| {
+    EventBus::new()
+        .subscribe(BankActorCreatedHandler)
+        .subscribe(VLockerActorCreatedHandler::new(v_locker::service().clone()))
+        .subscribe(VGarageActorCreatedHandler::new(v_garage::service().clone()))
+});
 
 pub fn group() -> Group {
     Group::new()

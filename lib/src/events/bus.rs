@@ -42,7 +42,7 @@ impl EventBus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Actor, ActorCreated};
+    use crate::models::{Actor, ActorCreated, ActorStartingConfig};
     use std::sync::{Arc, Mutex};
 
     #[derive(Clone)]
@@ -75,7 +75,10 @@ mod tests {
             "76561198000000000",
             "Tester",
         ));
-        let events = vec![DomainEvent::ActorCreated(ActorCreated::new(actor))];
+        let events = vec![DomainEvent::ActorCreated(ActorCreated::new(
+            actor,
+            ActorStartingConfig::default(),
+        ))];
 
         let errors = bus.publish_all(&events);
 

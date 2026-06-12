@@ -3,8 +3,12 @@ pub mod actor_event;
 pub mod bank;
 pub mod fuel;
 pub mod transaction;
+pub mod v_garage;
+pub mod v_locker;
 
-pub use actor::{Actor, ActorLifeState, ActorRank, ActorSnapshot, ActorStance};
+pub use actor::{
+    Actor, ActorLifeState, ActorRank, ActorSnapshot, ActorStance, ActorStartingConfig,
+};
 pub use actor_event::{ActorCreated, DomainEvent};
 pub use bank::{
     BankAccount, BankAccountView, BankTransaction, BankTransactionView, Money, MoneyAmount,
@@ -12,3 +16,5 @@ pub use bank::{
 };
 pub use fuel::FuelType;
 pub use transaction::{FuelTransaction, TransactionReceipt};
+pub use v_garage::{PlayerVGarage, VGarage, VehicleCategory};
+pub use v_locker::{EquipmentCategory, PlayerVLocker, VLocker};

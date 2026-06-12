@@ -7,9 +7,13 @@ use tokio::runtime::{Builder, Runtime};
 mod actor;
 mod fuel;
 mod log;
+mod v_garage;
+mod v_locker;
 
 use actor::group as actor_group;
 use fuel::group as fuel_group;
+use v_garage::group as v_garage_group;
+use v_locker::group as v_locker_group;
 
 // static CONTEXT: LazyLock<TokioRwLock<Option<Context>>> = LazyLock::new(|| TokioRwLock::new(None));
 pub(crate) static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
@@ -30,6 +34,8 @@ fn init() -> Extension {
         .command("log_path", get_log_path)
         .group("actor", actor_group())
         .group("fuel", fuel_group())
+        .group("v_garage", v_garage_group())
+        .group("v_locker", v_locker_group())
         .finish()
 }
 

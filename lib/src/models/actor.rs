@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use super::{VGarage, VLocker};
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Actor {
     pub uid: String,
@@ -49,7 +51,6 @@ impl Actor {
         self.stance = snapshot.stance;
         self.rank = snapshot.rank;
         self.life_state = snapshot.life_state;
-        self.organization = snapshot.organization;
         self.holster = snapshot.holster;
         self.schema_version = Self::CURRENT_SCHEMA_VERSION;
         self.updated_at = Utc::now();
@@ -76,6 +77,8 @@ pub struct ActorSnapshot {
     pub organization: String,
     #[serde(default = "default_holster")]
     pub holster: bool,
+    #[serde(default)]
+    pub starting: ActorStartingConfig,
 }
 
 impl ActorSnapshot {
@@ -91,6 +94,30 @@ impl ActorSnapshot {
             life_state: ActorLifeState::default(),
             organization: default_organization(),
             holster: default_holster(),
+            starting: ActorStartingConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActorStartingConfig {
+    #[serde(default = "default_money_amount")]
+    pub cash: String,
+    #[serde(default = "default_money_amount")]
+    pub bank: String,
+    #[serde(default)]
+    pub virtual_arsenal: VLocker,
+    #[serde(default)]
+    pub virtual_garage: VGarage,
+}
+
+impl Default for ActorStartingConfig {
+    fn default() -> Self {
+        Self {
+            cash: default_money_amount(),
+            bank: default_money_amount(),
+            virtual_arsenal: VLocker::default(),
+            virtual_garage: VGarage::default(),
         }
     }
 }
@@ -130,6 +157,10 @@ pub enum ActorLifeState {
 
 fn default_organization() -> String {
     "default".to_string()
+}
+
+fn default_money_amount() -> String {
+    "0.00".to_string()
 }
 
 const fn default_holster() -> bool {

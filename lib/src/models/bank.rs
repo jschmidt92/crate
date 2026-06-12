@@ -100,12 +100,14 @@ impl FromStr for Money {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerBankProfile {
     pub uid: String,
+    pub cash: Money,
     pub account: BankAccount,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerBankProfileView {
     pub uid: String,
+    pub cash: MoneyAmount,
     pub account: BankAccountView,
 }
 
@@ -113,6 +115,7 @@ impl From<&PlayerBankProfile> for PlayerBankProfileView {
     fn from(profile: &PlayerBankProfile) -> Self {
         Self {
             uid: profile.uid.clone(),
+            cash: profile.cash.to_amount(),
             account: BankAccountView::from(&profile.account),
         }
     }
@@ -121,11 +124,24 @@ impl From<&PlayerBankProfile> for PlayerBankProfileView {
 impl PlayerBankProfile {
     pub fn new(uid: impl Into<String>) -> Self {
         let uid = uid.into();
+        let account = BankAccount::new(uid.clone());
 
         Self {
-            account: BankAccount::new(uid.clone()),
             uid,
+            cash: Money::ZERO,
+            account,
         }
+    }
+
+    pub fn with_starting_balances(
+        uid: impl Into<String>,
+        cash: Money,
+        bank_balance: Money,
+    ) -> Self {
+        let mut profile = Self::new(uid);
+        profile.cash = cash;
+        profile.account.deposit(bank_balance);
+        profile
     }
 }
 
@@ -231,13 +247,15 @@ mod tests {
     }
 
     #[test]
-    fn bank_profile_view_exposes_money_as_string_amount() {
+    fn bank_profile_view_exposes_money_as_string_amounts() {
         let mut profile = PlayerBankProfile::new("76561198000000000");
+        profile.cash = Money::from_cents(1250);
         profile.account.deposit(Money::from_cents(2500));
 
         let view = PlayerBankProfileView::from(&profile);
         let json = serde_json::to_string(&view).expect("view should serialize");
 
+        assert!(json.contains("\"cash\":\"12.50\""));
         assert!(json.contains("\"balance\":\"25.00\""));
         assert!(!json.contains("\"cents\""));
     }

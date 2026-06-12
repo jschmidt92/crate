@@ -37,8 +37,9 @@ where
             });
         }
 
+        let starting = snapshot.starting.clone();
         let actor = self.repository.save(Actor::from_snapshot(snapshot))?;
-        let event = DomainEvent::ActorCreated(ActorCreated::new(actor.clone()));
+        let event = DomainEvent::ActorCreated(ActorCreated::new(actor.clone(), starting));
 
         Ok(ActorInitResult {
             actor,
@@ -110,11 +111,14 @@ mod tests {
     #[test]
     fn init_or_create_updates_existing_actor_without_event() {
         let service = ActorService::new(InMemoryActorRepository::new());
+        let mut initial = ActorSnapshot::new("76561198000000000", "Tester");
+        initial.organization = "player-owned-org".to_string();
         service
-            .init_or_create(ActorSnapshot::new("76561198000000000", "Tester"))
+            .init_or_create(initial)
             .expect("actor should be created");
 
         let mut snapshot = ActorSnapshot::new("76561198000000000", "Renamed");
+        snapshot.organization = "default".to_string();
         snapshot.position = [1.0, 2.0, 3.0];
         snapshot.stance = ActorStance::Crouch;
         snapshot.rank = ActorRank::Sergeant;
@@ -126,6 +130,7 @@ mod tests {
 
         assert!(!result.created);
         assert_eq!(result.actor.name, "Renamed");
+        assert_eq!(result.actor.organization, "player-owned-org");
         assert_eq!(result.actor.position, [1.0, 2.0, 3.0]);
         assert!(result.events.is_empty());
     }
@@ -139,5 +144,25 @@ mod tests {
             .expect_err("empty uid should fail");
 
         assert_eq!(error, ActorError::InvalidUid);
+    }
+
+    #[test]
+    fn init_or_create_carries_starting_config_on_created_event() {
+        let service = ActorService::new(InMemoryActorRepository::new());
+        let mut snapshot = ActorSnapshot::new("76561198000000000", "Tester");
+        snapshot.starting.cash = "125.00".to_string();
+        snapshot.starting.bank = "250.00".to_string();
+        snapshot.starting.virtual_arsenal.weapons = vec!["hgun_P07_F".to_string()];
+        snapshot.starting.virtual_garage.cars = vec!["B_Quadbike_01_F".to_string()];
+
+        let result = service
+            .init_or_create(snapshot)
+            .expect("actor should be created");
+
+        let DomainEvent::ActorCreated(event) = &result.events[0];
+        assert_eq!(event.starting.cash, "125.00");
+        assert_eq!(event.starting.bank, "250.00");
+        assert_eq!(event.starting.virtual_arsenal.weapons, ["hgun_P07_F"]);
+        assert_eq!(event.starting.virtual_garage.cars, ["B_Quadbike_01_F"]);
     }
 }
