@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FuelTransaction {
-    pub user_id: u64,
+    pub uid: String,
     pub plate: String,
     pub liters: f64,
     pub fuel_type: FuelType,
@@ -18,7 +18,7 @@ impl FuelTransaction {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionReceipt {
-    pub user_id: u64,
+    pub uid: String,
     pub amount: f64,
     pub description: String,
 }

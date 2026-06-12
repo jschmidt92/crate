@@ -6,6 +6,9 @@ pub mod transaction;
 
 pub use actor::{Actor, ActorLifeState, ActorRank, ActorSnapshot, ActorStance};
 pub use actor_event::{ActorCreated, DomainEvent};
-pub use bank::{BankAccount, BankTransaction, Money, PlayerBankProfile};
+pub use bank::{
+    BankAccount, BankAccountView, BankTransaction, BankTransactionView, Money, MoneyAmount,
+    PlayerBankProfile, PlayerBankProfileView,
+};
 pub use fuel::FuelType;
 pub use transaction::{FuelTransaction, TransactionReceipt};

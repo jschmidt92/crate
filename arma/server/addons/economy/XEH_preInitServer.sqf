@@ -12,9 +12,10 @@ FUNC(getFuelType) = {
 
 [QGVAR(FuelStart), {
     params ["_source", "_target", "_unit"];
+
     private _plate = GETVAR(_target,EGVAR(garage,plate),"");
     private _fuelType = [_target] call FUNC(getFuelType);
-    EXTCALL("fuel:started",[ARR_5(netID _source,netID _target,_unit,_plate,_fuelType)]);
+    EXTCALL("fuel:started",[ARR_5(netID _source,netID _target,getPlayerUID _unit,_plate,_fuelType)]);
 }] call CFUNC(addEventHandler);
 
 [QGVAR(FuelTick), {
@@ -33,6 +34,6 @@ addMissionEventHandler ["ExtensionCallback", {
     if (_name != "crate:fuel") exitWith {};
     if (_func != "price") exitWith {};
 
-    missionNamespace setVariable ["QGVAR(prices)", _data, true];
+    SETMPVAR(GVAR(prices),_data);
     ["forge_client_economy_prices", [_data]] call CBA_fnc_globalEvent;
 }];

@@ -15,13 +15,12 @@ pub fn group() -> Group {
         .state(Fueling::default())
 }
 
-type UserId = u64;
 type FuelingState = RwLock<HashMap<(String, String), FuelingSession>>;
 
 #[derive(Debug, Clone)]
 struct FuelingSession {
     amount: f64,
-    user_id: UserId,
+    uid: String,
     plate: String,
     fuel_type: FuelType,
 }
@@ -39,14 +38,14 @@ fn started(
     ctx: Context,
     source: String,
     target: String,
-    user_id: String,
+    uid: String,
     plate: String,
     fuel_type: String,
 ) {
-    let Ok(user_id) = user_id.parse::<u64>() else {
-        log::error(format_args!("Invalid user_id: {}", user_id));
+    if uid.trim().is_empty() {
+        log::error(format_args!("Invalid uid: {}", uid));
         return;
-    };
+    }
     let fueling = ctx
         .group()
         .get::<Fueling>()
@@ -63,14 +62,14 @@ fn started(
         FuelType::Regular
     });
     log::info(format_args!(
-        "Started fueling from {} to {} for user {}",
-        source, target, user_id
+        "Started fueling from {} to {} for uid {}",
+        source, target, uid
     ));
     fueling.insert(
         (source, target),
         FuelingSession {
             amount: 0.0,
-            user_id,
+            uid,
             plate,
             fuel_type,
         },
@@ -90,7 +89,7 @@ fn tick(ctx: Context, source: String, target: String, amount: f64) {
         .entry((source.clone(), target))
         .or_insert(FuelingSession {
             amount: 0.0,
-            user_id: 0,
+            uid: String::new(),
             plate: String::new(),
             fuel_type: FuelType::Regular,
         });
@@ -124,22 +123,22 @@ fn stopped(ctx: Context, source: String, target: String) {
 
     let price_per_liter = session.fuel_type.price_per_liter();
     let transaction = FuelTransaction {
-        user_id: session.user_id,
+        uid: session.uid,
         plate: session.plate,
         liters: session.amount,
         fuel_type: session.fuel_type,
         price_per_liter,
     };
     log::info(format_args!(
-        "Queued fuel bank transaction for user {} vehicle {}: {:.2} liters of {}",
-        transaction.user_id, transaction.plate, transaction.liters, transaction.fuel_type
+        "Queued fuel bank transaction for uid {} vehicle {}: {:.2} liters of {}",
+        transaction.uid, transaction.plate, transaction.liters, transaction.fuel_type
     ));
     let _ = RUNTIME.spawn(async move {
         match bank::process_fuel_transaction(transaction).await {
             Ok(receipt) => {
                 log::info(format_args!(
-                    "Completed bank transaction for user {}: {:.2} ({})",
-                    receipt.user_id, receipt.amount, receipt.description
+                    "Completed bank transaction for uid {}: {:.2} ({})",
+                    receipt.uid, receipt.amount, receipt.description
                 ));
             }
             Err(error) => {

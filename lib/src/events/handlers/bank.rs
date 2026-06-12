@@ -31,27 +31,11 @@ mod tests {
     use crate::models::{Actor, ActorCreated, ActorSnapshot};
 
     #[test]
-    fn actor_created_provisions_bank_profile_for_numeric_uid() {
+    fn actor_created_creates_bank_account_for_actor_uid() {
         let handler = BankActorCreatedHandler;
         let actor = Actor::from_snapshot(ActorSnapshot::new("76561198000000000", "Tester"));
         let event = DomainEvent::ActorCreated(ActorCreated::new(actor));
 
         assert!(handler.handle(&event).is_ok());
-    }
-
-    #[test]
-    fn actor_created_reports_invalid_bank_actor_uid() {
-        let handler = BankActorCreatedHandler;
-        let actor = Actor::from_snapshot(ActorSnapshot::new("not-a-steam-id", "Tester"));
-        let event = DomainEvent::ActorCreated(ActorCreated::new(actor));
-
-        assert!(matches!(
-            handler.handle(&event),
-            Err(EventError::HandlerFailed {
-                handler: "bank.actor_created",
-                event: "actor.created",
-                ..
-            })
-        ));
     }
 }
