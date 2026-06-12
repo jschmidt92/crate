@@ -1,7 +1,16 @@
 use crate::{
-    models::{FuelTransaction, TransactionReceipt},
+    models::{Actor, FuelTransaction, PlayerBankProfile, TransactionReceipt},
     shared::BankError,
 };
+
+pub fn create_actor_account(actor: &Actor) -> Result<PlayerBankProfile, BankError> {
+    let player_id = actor
+        .uid
+        .parse::<u64>()
+        .map_err(|_| BankError::InvalidActorUid)?;
+
+    Ok(PlayerBankProfile::new(player_id))
+}
 
 pub async fn process_fuel_transaction(
     transaction: FuelTransaction,

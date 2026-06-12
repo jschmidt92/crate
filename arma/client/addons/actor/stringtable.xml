@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="forge_client_actor">
+    <Package name="actor">
+        <Key ID="STR_forge_client_actor_displayName">
+            <English>Actor</English>
+        </Key>
+    </Package>
+</Project>

@@ -1,0 +1,2 @@
+PREP(initPlayer);
+PREP(snapshotFromPlayer);

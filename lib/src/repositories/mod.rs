@@ -1,1 +1,3 @@
-// Repository modules will live here as persistence backends are added.
+pub mod actor;
+
+pub use actor::{ActorRepository, InMemoryActorRepository};

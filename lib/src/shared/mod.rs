@@ -1,3 +1,3 @@
 pub mod error;
 
-pub use error::BankError;
+pub use error::{ActorError, BankError, EventError};

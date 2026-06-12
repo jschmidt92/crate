@@ -4,9 +4,11 @@ use std::sync::LazyLock;
 use tokio::runtime::{Builder, Runtime};
 // use tokio::sync::RwLock as TokioRwLock;
 
+mod actor;
 mod fuel;
 mod log;
 
+use actor::group as actor_group;
 use fuel::group as fuel_group;
 
 // static CONTEXT: LazyLock<TokioRwLock<Option<Context>>> = LazyLock::new(|| TokioRwLock::new(None));
@@ -26,6 +28,7 @@ fn init() -> Extension {
         .command("version", get_version)
         .command("status", get_status)
         .command("log_path", get_log_path)
+        .group("actor", actor_group())
         .group("fuel", fuel_group())
         .finish()
 }

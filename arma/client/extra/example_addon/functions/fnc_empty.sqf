@@ -1,7 +1,13 @@
 #include "..\script_component.hpp"
 
 /*
+ * File: fnc_empty.sqf
  * Author: IDSolutions
+ * Date: 2026-06-12
+ * Last Update: 2026-06-12
+ * Public: No
+ *
+ * Description:
  * An empty function that does nothing.
  *
  * Arguments:
@@ -11,7 +17,5 @@
  * None
  *
  * Example:
- * [] call forge_client_addonName_fnc_empty;
- *
- * Public: No
+ * [] call forge_client_example_addon_fnc_empty;
  */
