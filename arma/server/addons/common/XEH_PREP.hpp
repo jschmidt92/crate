@@ -1,1 +1,2 @@
+PREP(getConfigMoney);
 PREP(getPlayerByUID);

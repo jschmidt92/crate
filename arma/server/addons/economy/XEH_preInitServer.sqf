@@ -13,10 +13,7 @@ FUNC(getFuelType) = {
 FUNC(getServiceAmount) = {
     params [["_service", "", [""]], ["_property", "", [""]], ["_default", "0.00", [""]]];
 
-    private _config = missionConfigFile >> "CfgForgeMission" >> "Services" >> _service >> _property;
-    if (isText _config) exitWith { getText _config };
-    if (isNumber _config) exitWith { str getNumber _config };
-    _default
+    [missionConfigFile >> "CfgForgeMission" >> "Services" >> _service >> _property, _default] call EFUNC(common,getConfigMoney)
 };
 
 FUNC(getRefuelPrice) = {

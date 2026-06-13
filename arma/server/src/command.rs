@@ -98,3 +98,113 @@ fn quinary(args: Vec<String>, f: fn(String, String, String, String, String) -> S
     };
     f(a, b, c, d, e)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn refuel_routes_use_expected_arities() {
+        let quote = dispatch(
+            "refuel:quote",
+            vec!["10".to_string(), "regular".to_string(), "1.00".to_string()],
+        );
+        assert!(
+            !quote.starts_with("Error: invalid argument count"),
+            "{quote}"
+        );
+
+        let complete = dispatch(
+            "refuel:complete",
+            vec![
+                "steam:local-dev".to_string(),
+                "ABC123".to_string(),
+                "10".to_string(),
+                "regular".to_string(),
+                "0.00".to_string(),
+            ],
+        );
+        assert!(
+            !complete.starts_with("Error: invalid argument count"),
+            "{complete}"
+        );
+
+        let old_route = dispatch(
+            "refuel:refuel",
+            vec![
+                "steam:local-dev".to_string(),
+                "ABC123".to_string(),
+                "10".to_string(),
+                "regular".to_string(),
+                "0.00".to_string(),
+            ],
+        );
+        assert!(old_route.starts_with("Error: Unsupported transport route"));
+    }
+
+    #[test]
+    fn notification_routes_use_expected_arities() {
+        let list = dispatch("notification:list", vec!["steam:local-dev".to_string()]);
+        assert!(!list.starts_with("Error: invalid argument count"), "{list}");
+
+        let unread = dispatch("notification:unread", vec!["steam:local-dev".to_string()]);
+        assert!(
+            !unread.starts_with("Error: invalid argument count"),
+            "{unread}"
+        );
+
+        let mark_all = dispatch(
+            "notification:mark_all_read",
+            vec!["steam:local-dev".to_string()],
+        );
+        assert!(
+            !mark_all.starts_with("Error: invalid argument count"),
+            "{mark_all}"
+        );
+
+        let mark_read = dispatch(
+            "notification:mark_read",
+            vec![
+                "steam:local-dev".to_string(),
+                "not-a-notification-id".to_string(),
+            ],
+        );
+        assert!(
+            !mark_read.starts_with("Error: invalid argument count"),
+            "{mark_read}"
+        );
+    }
+
+    #[test]
+    fn service_fee_routes_use_expected_arities() {
+        let repair = dispatch(
+            "repair:quote",
+            vec!["0.50".to_string(), "2500.00".to_string()],
+        );
+        assert!(
+            !repair.starts_with("Error: invalid argument count"),
+            "{repair}"
+        );
+
+        let rearm = dispatch("rearm:quote", vec!["2".to_string(), "75.00".to_string()]);
+        assert!(
+            !rearm.starts_with("Error: invalid argument count"),
+            "{rearm}"
+        );
+
+        let respawn = dispatch(
+            "medical:respawn",
+            vec!["steam:local-dev".to_string(), "0.00".to_string()],
+        );
+        assert!(
+            !respawn.starts_with("Error: invalid argument count"),
+            "{respawn}"
+        );
+
+        let heal = dispatch(
+            "medical:heal",
+            vec!["steam:local-dev".to_string(), "0.00".to_string()],
+        );
+        assert!(!heal.starts_with("Error: invalid argument count"), "{heal}");
+    }
+}

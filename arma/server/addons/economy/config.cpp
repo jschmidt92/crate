@@ -8,7 +8,8 @@ class CfgPatches {
         name = COMPONENT_NAME;
         requiredVersion = REQUIRED_VERSION;
         requiredAddons[] = {
-            "forge_server_main"
+            "forge_server_main",
+            "forge_server_common"
         };
         units[] = {};
         weapons[] = {};

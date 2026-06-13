@@ -65,14 +65,16 @@ fn started(
         ));
         return;
     };
-    let fueling = ctx
-        .group()
-        .get::<Fueling>()
-        .expect("Unable to get Fueling state");
-    let mut fueling = fueling
-        .as_ref()
-        .write()
-        .expect("Unable to acquire write lock on Fueling state");
+    let Some(fueling) = ctx.group().get::<Fueling>() else {
+        log::error(format_args!("Unable to get Fueling state"));
+        return;
+    };
+    let Ok(mut fueling) = fueling.as_ref().write() else {
+        log::error(format_args!(
+            "Unable to acquire write lock on Fueling state"
+        ));
+        return;
+    };
     let fuel_type = FuelType::try_from(fuel_type.as_str()).unwrap_or_else(|()| {
         log::error(format_args!(
             "Invalid fuel_type: {}, defaulting to regular",
@@ -97,14 +99,16 @@ fn started(
 }
 
 fn tick(ctx: Context, source: String, target: String, amount: f64) {
-    let fueling = ctx
-        .group()
-        .get::<Fueling>()
-        .expect("Unable to get Fueling state");
-    let mut fueling = fueling
-        .as_ref()
-        .write()
-        .expect("Unable to acquire write lock on Fueling state");
+    let Some(fueling) = ctx.group().get::<Fueling>() else {
+        log::error(format_args!("Unable to get Fueling state"));
+        return;
+    };
+    let Ok(mut fueling) = fueling.as_ref().write() else {
+        log::error(format_args!(
+            "Unable to acquire write lock on Fueling state"
+        ));
+        return;
+    };
     let entry = fueling
         .entry((source.clone(), target))
         .or_insert(FuelingSession {
@@ -124,14 +128,16 @@ fn stopped(ctx: Context, source: String, target: String) {
         source, target
     ));
     let session = {
-        let fueling = ctx
-            .group()
-            .get::<Fueling>()
-            .expect("Unable to get Fueling state");
-        let mut fueling = fueling
-            .as_ref()
-            .write()
-            .expect("Unable to acquire write lock on Fueling state");
+        let Some(fueling) = ctx.group().get::<Fueling>() else {
+            log::error(format_args!("Unable to get Fueling state"));
+            return;
+        };
+        let Ok(mut fueling) = fueling.as_ref().write() else {
+            log::error(format_args!(
+                "Unable to acquire write lock on Fueling state"
+            ));
+            return;
+        };
         let Some(session) = fueling.remove(&(source.clone(), target.clone())) else {
             log::error(format_args!(
                 "No matching entry found for {} to {}",

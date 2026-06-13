@@ -29,18 +29,9 @@ params [
 ];
 
 if (_uid isEqualTo "") exitWith { createHashMap };
-if (_organization isEqualTo "") then {
-    _organization = "default";
-};
+if (_organization isEqualTo "") then { _organization = "default"; };
 if (_amount isEqualTo "") then {
-    private _paydayConfig = missionConfigFile >> "CfgForgeMission" >> "DefaultOrganization" >> "paydayAmount";
-    _amount = "0.00";
-    if (isText _paydayConfig) then {
-        _amount = getText _paydayConfig;
-    };
-    if (isNumber _paydayConfig) then {
-        _amount = str getNumber _paydayConfig;
-    };
+    _amount = [missionConfigFile >> "CfgForgeMission" >> "DefaultOrganization" >> "paydayAmount", "0.00"] call EFUNC(common,getConfigMoney);
 };
 
 private _isDefaultCeoSlot = [_uid] call FUNC(isDefaultCeoSlot);

@@ -83,7 +83,7 @@ Current helper functions:
 - `forge_server_notification_fnc_markAllRead`
 - `forge_server_notification_fnc_notifyPlayer`
 
-`notifyPlayer` fetches unread notifications for a player and sends them to that player with `systemChat`. The bank player-init flow calls it after bank initialization, so players see unread organization notifications when they join. A later UI can replace `notifyPlayer` with a custom inbox while keeping the same Rust command surface.
+`notifyPlayer` fetches unread notifications for a player and sends them to that player with `systemChat`. The bank player-init flow calls it after bank initialization and marks displayed notifications read, so players do not see the same join-time notifications repeatedly. A later UI can replace `notifyPlayer` with a custom inbox while keeping the same Rust command surface.
 
 ## Current Events
 

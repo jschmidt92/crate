@@ -21,13 +21,7 @@
  */
 
 private _defaultConfig = missionConfigFile >> "CfgForgeMission" >> "DefaultOrganization";
-private _startingBank = "0.00";
-if (isText (_defaultConfig >> "startingBank")) then {
-    _startingBank = getText (_defaultConfig >> "startingBank");
-};
-if (isNumber (_defaultConfig >> "startingBank")) then {
-    _startingBank = str getNumber (_defaultConfig >> "startingBank");
-};
+private _startingBank = [_defaultConfig >> "startingBank", "0.00"] call EFUNC(common,getConfigMoney);
 
 private _garageConfig = _defaultConfig >> "VirtualGarage";
 private _virtualGarage = createHashMapFromArray [
