@@ -1,4 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::{Money, MoneyAmount, VGarage, VLocker};
 
@@ -29,6 +31,91 @@ pub struct OrganizationPayday {
     pub organization: OrganizationView,
     pub amount: MoneyAmount,
     pub recipients: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrganizationDisband {
+    pub disbanded: OrganizationView,
+    pub default_organization: OrganizationView,
+    pub reassigned_uids: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrganizationMemberTransfer {
+    pub organization: OrganizationView,
+    pub default_organization: OrganizationView,
+    pub uid: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrganizationPaydayPlan {
+    pub organization: Organization,
+    pub amount: Money,
+    pub recipients: Vec<String>,
+}
+
+impl OrganizationPaydayPlan {
+    pub fn total(&self) -> Money {
+        Money::from_cents(self.amount.cents() * self.recipients.len() as i64)
+    }
+
+    pub fn to_payday(&self) -> OrganizationPayday {
+        OrganizationPayday {
+            organization: OrganizationView::from(&self.organization),
+            amount: self.amount.to_amount(),
+            recipients: self.recipients.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrganizationInvite {
+    pub id: Uuid,
+    pub organization_id: String,
+    pub inviter_uid: String,
+    pub invitee_uid: String,
+    pub status: OrganizationInviteStatus,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl OrganizationInvite {
+    pub fn new(
+        organization_id: impl Into<String>,
+        inviter_uid: impl Into<String>,
+        invitee_uid: impl Into<String>,
+    ) -> Self {
+        let now = Utc::now();
+
+        Self {
+            id: Uuid::new_v4(),
+            organization_id: organization_id.into(),
+            inviter_uid: inviter_uid.into(),
+            invitee_uid: invitee_uid.into(),
+            status: OrganizationInviteStatus::Pending,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    pub fn accept(&mut self) {
+        self.status = OrganizationInviteStatus::Accepted;
+        self.updated_at = Utc::now();
+    }
+
+    pub fn decline(&mut self) {
+        self.status = OrganizationInviteStatus::Declined;
+        self.updated_at = Utc::now();
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OrganizationInviteStatus {
+    Pending,
+    Accepted,
+    Declined,
+    Revoked,
 }
 
 impl From<&Organization> for OrganizationView {

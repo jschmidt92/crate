@@ -1,10 +1,6 @@
 use crate::log;
 use arma_rs::Group;
-use forge_lib::{
-    models::{Money, PlayerBankProfileView},
-    services::BankService,
-    shared::BankError,
-};
+use forge_lib::services::BankService;
 use std::sync::LazyLock;
 
 static BANK_SERVICE: LazyLock<BankService<crate::persistence::CachedBankRepository>> =
@@ -42,8 +38,4 @@ pub(crate) fn disconnect_bank(uid: String) -> String {
             format!("Error: {error}")
         }
     }
-}
-
-pub(crate) fn deposit_payday(uid: &str, amount: Money) -> Result<PlayerBankProfileView, BankError> {
-    BANK_SERVICE.deposit_to_account(uid, amount)
 }

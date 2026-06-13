@@ -1,4 +1,4 @@
-use crate::log;
+use crate::{events, log};
 use arma_rs::Group;
 use forge_lib::{models::ActorSnapshot, services::ActorService};
 use std::sync::LazyLock;
@@ -25,15 +25,18 @@ pub(crate) fn init_actor(snapshot_json: String) -> String {
     };
 
     match ACTOR_SERVICE.init_or_create(snapshot) {
-        Ok(result) => match serde_json::to_string(&result.actor) {
-            Ok(json) => json,
-            Err(error) => {
-                log::error(format_args!(
-                    "failed to serialize actor init result: {error}"
-                ));
-                format!("Error: failed to serialize actor init result: {error}")
+        Ok(result) => {
+            events::publish_all(&result.events);
+            match serde_json::to_string(&result.actor) {
+                Ok(json) => json,
+                Err(error) => {
+                    log::error(format_args!(
+                        "failed to serialize actor init result: {error}"
+                    ));
+                    format!("Error: failed to serialize actor init result: {error}")
+                }
             }
-        },
+        }
         Err(error) => {
             log::error(format_args!("failed to init actor: {error}"));
             format!("Error: {error}")

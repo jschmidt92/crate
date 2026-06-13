@@ -35,6 +35,7 @@ impl DomainEventHandler for GarageActorCreatedHandler {
                     event: event.name(),
                     message: error.to_string(),
                 }),
+            _ => Ok(()),
         }
     }
 }

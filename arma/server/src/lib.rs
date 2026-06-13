@@ -8,6 +8,7 @@ mod actor;
 mod bank;
 mod command;
 mod config;
+mod events;
 mod fuel;
 mod garage;
 mod locker;
@@ -42,6 +43,7 @@ fn init() -> Extension {
     log::info(format_args!("initializing {}", get_version()));
     let config = config::load();
     persistence::init(config.database);
+    events::init();
 
     Extension::build()
         .command("version", get_version)

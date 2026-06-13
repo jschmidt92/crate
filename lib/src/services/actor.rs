@@ -163,10 +163,14 @@ mod tests {
             .init_or_create(snapshot)
             .expect("actor should be created");
 
-        let DomainEvent::ActorCreated(event) = &result.events[0];
-        assert_eq!(event.starting.cash, "125.00");
-        assert_eq!(event.starting.bank, "250.00");
-        assert_eq!(event.starting.virtual_arsenal.weapons, ["hgun_P07_F"]);
-        assert_eq!(event.starting.virtual_garage.cars, ["B_Quadbike_01_F"]);
+        match &result.events[0] {
+            DomainEvent::ActorCreated(event) => {
+                assert_eq!(event.starting.cash, "125.00");
+                assert_eq!(event.starting.bank, "250.00");
+                assert_eq!(event.starting.virtual_arsenal.weapons, ["hgun_P07_F"]);
+                assert_eq!(event.starting.virtual_garage.cars, ["B_Quadbike_01_F"]);
+            }
+            event => panic!("expected actor created event, got {event:?}"),
+        }
     }
 }

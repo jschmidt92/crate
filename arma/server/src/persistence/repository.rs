@@ -1,7 +1,7 @@
 use super::{enqueue_delete, enqueue_upsert};
 use forge_lib::models::{PlayerGarage, PlayerLocker, PlayerVGarage, PlayerVLocker};
 use forge_lib::{
-    models::{Actor, Organization, PlayerBankProfile},
+    models::{Actor, Organization, OrganizationInvite, PlayerBankProfile},
     repositories::{
         ActorRepository, BankRepository, GarageRepository, InMemoryActorRepository,
         InMemoryBankRepository, InMemoryGarageRepository, InMemoryLockerRepository,
@@ -59,6 +59,13 @@ impl CachedBankRepository {
         Self {
             cache: InMemoryBankRepository::new(),
         }
+    }
+
+    pub(crate) fn save_without_enqueue(
+        &self,
+        profile: PlayerBankProfile,
+    ) -> Result<PlayerBankProfile, BankError> {
+        self.cache.save(profile)
     }
 }
 
@@ -235,6 +242,13 @@ impl CachedOrganizationRepository {
             cache: InMemoryOrganizationRepository::new(),
         }
     }
+
+    pub(crate) fn save_without_enqueue(
+        &self,
+        organization: Organization,
+    ) -> Result<Organization, OrganizationError> {
+        self.cache.save(organization)
+    }
 }
 
 impl OrganizationRepository for CachedOrganizationRepository {
@@ -246,10 +260,31 @@ impl OrganizationRepository for CachedOrganizationRepository {
         self.cache.find_by_member_uid(uid)
     }
 
+    fn find_invite(&self, id: &str) -> Result<Option<OrganizationInvite>, OrganizationError> {
+        self.cache.find_invite(id)
+    }
+
+    fn find_pending_invite(
+        &self,
+        organization_id: &str,
+        invitee_uid: &str,
+    ) -> Result<Option<OrganizationInvite>, OrganizationError> {
+        self.cache.find_pending_invite(organization_id, invitee_uid)
+    }
+
     fn save(&self, organization: Organization) -> Result<Organization, OrganizationError> {
         let organization = self.cache.save(organization)?;
         enqueue_upsert("organization", &organization.id, &organization);
         Ok(organization)
+    }
+
+    fn save_invite(
+        &self,
+        invite: OrganizationInvite,
+    ) -> Result<OrganizationInvite, OrganizationError> {
+        let invite = self.cache.save_invite(invite)?;
+        enqueue_upsert("organization_invite", &invite.id.to_string(), &invite);
+        Ok(invite)
     }
 
     fn delete(&self, id: &str) -> Result<(), OrganizationError> {
@@ -264,4 +299,11 @@ pub(super) fn cache_organization(
     organization: Organization,
 ) {
     let _ = repository.cache.save(organization);
+}
+
+pub(super) fn cache_organization_invite(
+    repository: &CachedOrganizationRepository,
+    invite: OrganizationInvite,
+) {
+    let _ = repository.cache.save_invite(invite);
 }

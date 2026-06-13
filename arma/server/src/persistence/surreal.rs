@@ -1,8 +1,8 @@
 use super::model::WriteOp;
 use crate::{config::DatabaseConfig, log};
 use forge_lib::models::{
-    Actor, Organization, PlayerBankProfile, PlayerGarage, PlayerLocker, PlayerVGarage,
-    PlayerVLocker,
+    Actor, Organization, OrganizationInvite, PlayerBankProfile, PlayerGarage, PlayerLocker,
+    PlayerVGarage, PlayerVLocker,
 };
 use surrealdb::{Surreal, engine::remote::ws::Client, engine::remote::ws::Ws, opt::auth::Root};
 
@@ -12,6 +12,7 @@ pub struct HydratedRecords {
     pub garages: Vec<PlayerGarage>,
     pub lockers: Vec<PlayerLocker>,
     pub organizations: Vec<Organization>,
+    pub organization_invites: Vec<OrganizationInvite>,
     pub v_garages: Vec<PlayerVGarage>,
     pub v_lockers: Vec<PlayerVLocker>,
 }
@@ -46,8 +47,50 @@ impl SurrealRepository {
             WriteOp::Delete { table, id } => {
                 let _: Option<serde_json::Value> = self.db.delete((*table, id.as_str())).await?;
             }
+            WriteOp::Batch { ops } => {
+                self.apply_batch(ops).await?;
+            }
         }
 
+        Ok(())
+    }
+
+    async fn apply_batch(&self, ops: &[WriteOp]) -> surrealdb::Result<()> {
+        let mut sql = String::from("BEGIN TRANSACTION;\n");
+        for (index, op) in ops.iter().enumerate() {
+            match op {
+                WriteOp::Upsert { .. } => {
+                    sql.push_str(&format!(
+                        "UPSERT type::thing($table{index}, $id{index}) CONTENT $value{index};\n"
+                    ));
+                }
+                WriteOp::Delete { .. } => {
+                    sql.push_str(&format!("DELETE type::thing($table{index}, $id{index});\n"));
+                }
+                WriteOp::Batch { .. } => {}
+            }
+        }
+        sql.push_str("COMMIT TRANSACTION;");
+
+        let mut query = self.db.query(sql);
+        for (index, op) in ops.iter().enumerate() {
+            match op {
+                WriteOp::Upsert { table, id, value } => {
+                    query = query
+                        .bind((format!("table{index}"), *table))
+                        .bind((format!("id{index}"), id.clone()))
+                        .bind((format!("value{index}"), value.clone()));
+                }
+                WriteOp::Delete { table, id } => {
+                    query = query
+                        .bind((format!("table{index}"), *table))
+                        .bind((format!("id{index}"), id.clone()));
+                }
+                WriteOp::Batch { .. } => {}
+            }
+        }
+
+        query.await?;
         Ok(())
     }
 }
@@ -59,6 +102,12 @@ pub async fn hydrate(repository: &SurrealRepository) -> HydratedRecords {
         garages: select_table(&repository.db, "garage", "garage").await,
         lockers: select_table(&repository.db, "locker", "locker").await,
         organizations: select_table(&repository.db, "organization", "organization").await,
+        organization_invites: select_table(
+            &repository.db,
+            "organization_invite",
+            "organization invite",
+        )
+        .await,
         v_garages: select_table(&repository.db, "v_garage", "virtual garage").await,
         v_lockers: select_table(&repository.db, "v_locker", "virtual locker").await,
     }

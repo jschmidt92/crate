@@ -1,7 +1,9 @@
 use crate::{
     models::{
-        Money, Organization, OrganizationAction, OrganizationKind, OrganizationPayday,
-        OrganizationView, VGarage, VLocker,
+        Money, Organization, OrganizationAction, OrganizationDisband, OrganizationInvite,
+        OrganizationInviteStatus, OrganizationKind, OrganizationMember, OrganizationMemberTransfer,
+        OrganizationPayday, OrganizationPaydayPlan, OrganizationRole, OrganizationView, VGarage,
+        VLocker,
     },
     repositories::OrganizationRepository,
     shared::OrganizationError,
@@ -52,8 +54,188 @@ where
         validate_org_id(id)?;
         validate_uid(ceo_uid)?;
 
+        self.remove_from_current_org_for_transfer(ceo_uid)?;
         self.repository
             .save(Organization::player_org(id, name, ceo_uid))
+    }
+
+    pub fn create_invite(
+        &self,
+        inviter_uid: &str,
+        organization_id: &str,
+        invitee_uid: &str,
+    ) -> Result<OrganizationInvite, OrganizationError> {
+        let organization = self.require_action_allowed(
+            inviter_uid,
+            organization_id,
+            OrganizationAction::InviteMember,
+        )?;
+        validate_uid(invitee_uid)?;
+
+        if organization.has_member(invitee_uid) {
+            return Err(OrganizationError::AlreadyMember);
+        }
+
+        if self
+            .repository
+            .find_pending_invite(organization_id, invitee_uid)?
+            .is_some()
+        {
+            return Err(OrganizationError::InviteNotPending);
+        }
+
+        self.repository.save_invite(OrganizationInvite::new(
+            organization_id,
+            inviter_uid,
+            invitee_uid,
+        ))
+    }
+
+    pub fn accept_invite(
+        &self,
+        invitee_uid: &str,
+        invite_id: &str,
+    ) -> Result<(Organization, OrganizationInvite), OrganizationError> {
+        validate_uid(invitee_uid)?;
+        let mut invite = self.require_invite(invite_id)?;
+        self.require_pending_invite_for(&invite, invitee_uid)?;
+
+        let mut organization = self.require_org(&invite.organization_id)?;
+        if organization.has_member(invitee_uid) {
+            return Err(OrganizationError::AlreadyMember);
+        }
+
+        self.remove_from_current_org_for_transfer(invitee_uid)?;
+        if !organization.has_member(invitee_uid) {
+            organization.members.push(OrganizationMember::new(
+                invitee_uid,
+                OrganizationRole::Member,
+            ));
+        }
+        invite.accept();
+
+        let organization = self.repository.save(organization)?;
+        let invite = self.repository.save_invite(invite)?;
+
+        Ok((organization, invite))
+    }
+
+    pub fn decline_invite(
+        &self,
+        invitee_uid: &str,
+        invite_id: &str,
+    ) -> Result<OrganizationInvite, OrganizationError> {
+        validate_uid(invitee_uid)?;
+        let mut invite = self.require_invite(invite_id)?;
+        self.require_pending_invite_for(&invite, invitee_uid)?;
+        invite.decline();
+
+        self.repository.save_invite(invite)
+    }
+
+    pub fn leave_member(
+        &self,
+        organization_id: &str,
+        uid: &str,
+    ) -> Result<OrganizationMemberTransfer, OrganizationError> {
+        let mut organization = self.require_member(uid, organization_id)?;
+
+        if organization.kind == OrganizationKind::Default {
+            return Err(OrganizationError::CannotLeaveDefaultOrg);
+        }
+
+        if organization.is_ceo(uid) {
+            return Err(OrganizationError::LastCeoCannotLeave);
+        }
+
+        organization.members.retain(|member| member.uid != uid);
+        let organization = self.repository.save(organization)?;
+        let default_organization = self.add_to_default_org(uid)?;
+
+        Ok(OrganizationMemberTransfer {
+            organization: OrganizationView::from(&organization),
+            default_organization: OrganizationView::from(&default_organization),
+            uid: uid.to_string(),
+        })
+    }
+
+    pub fn kick_member(
+        &self,
+        organization_id: &str,
+        actor_uid: &str,
+        kicked_uid: &str,
+    ) -> Result<OrganizationMemberTransfer, OrganizationError> {
+        let organization = self.require_org(organization_id)?;
+        if organization.kind == OrganizationKind::Default {
+            return Err(OrganizationError::RestrictedDefaultOrgAction);
+        }
+
+        let mut organization = self.require_action_allowed(
+            actor_uid,
+            organization_id,
+            OrganizationAction::RemoveMember,
+        )?;
+        validate_uid(kicked_uid)?;
+
+        if !organization.has_member(kicked_uid) {
+            return Err(OrganizationError::NotMember);
+        }
+
+        if organization.is_ceo(kicked_uid) {
+            return Err(OrganizationError::LastCeoCannotLeave);
+        }
+
+        organization
+            .members
+            .retain(|member| member.uid != kicked_uid);
+        let organization = self.repository.save(organization)?;
+        let default_organization = self.add_to_default_org(kicked_uid)?;
+
+        Ok(OrganizationMemberTransfer {
+            organization: OrganizationView::from(&organization),
+            default_organization: OrganizationView::from(&default_organization),
+            uid: kicked_uid.to_string(),
+        })
+    }
+
+    pub fn disband_player_org(
+        &self,
+        organization_id: &str,
+        ceo_uid: &str,
+    ) -> Result<OrganizationDisband, OrganizationError> {
+        let organization =
+            self.require_action_allowed(ceo_uid, organization_id, OrganizationAction::Disband)?;
+
+        if organization.kind != OrganizationKind::Player {
+            return Err(OrganizationError::RestrictedDefaultOrgAction);
+        }
+
+        let mut default_organization = self
+            .repository
+            .find_by_id("default")?
+            .unwrap_or_else(Organization::default_org);
+
+        let mut reassigned_uids = Vec::new();
+        for uid in organization.members.iter().map(|member| member.uid.clone()) {
+            validate_uid(&uid)?;
+            if !default_organization.has_member(&uid) {
+                default_organization
+                    .members
+                    .push(OrganizationMember::new(&uid, OrganizationRole::Member));
+            }
+            if !reassigned_uids.contains(&uid) {
+                reassigned_uids.push(uid);
+            }
+        }
+
+        let default_organization = self.repository.save(default_organization)?;
+        self.repository.delete(&organization.id)?;
+
+        Ok(OrganizationDisband {
+            disbanded: OrganizationView::from(&organization),
+            default_organization: OrganizationView::from(&default_organization),
+            reassigned_uids,
+        })
     }
 
     pub fn get(&self, id: &str) -> Result<Option<Organization>, OrganizationError> {
@@ -206,6 +388,23 @@ where
         amount: &str,
         in_default_ceo_slot: bool,
     ) -> Result<OrganizationPayday, OrganizationError> {
+        let plan = self.prepare_payday(uid, organization_id, amount, in_default_ceo_slot)?;
+        let organization = self.repository.save(plan.organization)?;
+
+        Ok(OrganizationPayday {
+            organization: OrganizationView::from(&organization),
+            amount: plan.amount.to_amount(),
+            recipients: plan.recipients,
+        })
+    }
+
+    pub fn prepare_payday(
+        &self,
+        uid: &str,
+        organization_id: &str,
+        amount: &str,
+        in_default_ceo_slot: bool,
+    ) -> Result<OrganizationPaydayPlan, OrganizationError> {
         let mut organization = self.require_action_allowed_with_default_ceo_slot(
             uid,
             organization_id,
@@ -240,11 +439,10 @@ where
         }
 
         organization.bank = organization.bank - total;
-        let organization = self.repository.save(organization)?;
 
-        Ok(OrganizationPayday {
-            organization: OrganizationView::from(&organization),
-            amount: amount.to_amount(),
+        Ok(OrganizationPaydayPlan {
+            organization,
+            amount,
             recipients,
         })
     }
@@ -254,6 +452,59 @@ where
         self.repository
             .find_by_id(organization_id)?
             .ok_or(OrganizationError::NotFound)
+    }
+
+    fn require_invite(&self, invite_id: &str) -> Result<OrganizationInvite, OrganizationError> {
+        validate_org_id(invite_id)?;
+        self.repository
+            .find_invite(invite_id)?
+            .ok_or(OrganizationError::InviteNotFound)
+    }
+
+    fn require_pending_invite_for(
+        &self,
+        invite: &OrganizationInvite,
+        uid: &str,
+    ) -> Result<(), OrganizationError> {
+        if invite.invitee_uid != uid {
+            return Err(OrganizationError::InviteeMismatch);
+        }
+
+        if invite.status != OrganizationInviteStatus::Pending {
+            return Err(OrganizationError::InviteNotPending);
+        }
+
+        Ok(())
+    }
+
+    fn remove_from_current_org_for_transfer(&self, uid: &str) -> Result<(), OrganizationError> {
+        let Some(mut current_org) = self.repository.find_by_member_uid(uid)? else {
+            return Ok(());
+        };
+
+        if current_org.is_ceo(uid) && current_org.kind == OrganizationKind::Player {
+            return Err(OrganizationError::LastCeoCannotLeave);
+        }
+
+        current_org.members.retain(|member| member.uid != uid);
+        self.repository.save(current_org)?;
+        Ok(())
+    }
+
+    fn add_to_default_org(&self, uid: &str) -> Result<Organization, OrganizationError> {
+        validate_uid(uid)?;
+        let mut default_organization = self
+            .repository
+            .find_by_id("default")?
+            .unwrap_or_else(Organization::default_org);
+
+        if !default_organization.has_member(uid) {
+            default_organization
+                .members
+                .push(OrganizationMember::new(uid, OrganizationRole::Member));
+        }
+
+        self.repository.save(default_organization)
     }
 }
 
@@ -432,6 +683,192 @@ mod tests {
                 .expect_err("member cannot spend"),
             OrganizationError::NotCeo
         );
+    }
+
+    #[test]
+    fn player_org_ceo_cannot_leave_without_disbanding() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_player_org("org-1", "Player Org", "ceo-uid")
+            .expect("player org should be created");
+
+        assert_eq!(
+            service
+                .leave_member("org-1", "ceo-uid")
+                .expect_err("ceo should disband instead of leave"),
+            OrganizationError::LastCeoCannotLeave
+        );
+    }
+
+    #[test]
+    fn player_org_member_leave_moves_member_to_default_org() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+        let mut organization = Organization::player_org("org-1", "Player Org", "ceo-uid");
+        organization.members.push(OrganizationMember::new(
+            "member-uid",
+            OrganizationRole::Member,
+        ));
+        service.repository.save(organization).unwrap();
+
+        let transfer = service
+            .leave_member("org-1", "member-uid")
+            .expect("member should leave");
+
+        assert_eq!(transfer.organization.id, "org-1");
+        assert_eq!(transfer.default_organization.id, "default");
+        assert_eq!(transfer.uid, "member-uid");
+        assert!(
+            !service
+                .get("org-1")
+                .unwrap()
+                .unwrap()
+                .has_member("member-uid")
+        );
+        assert!(
+            service
+                .get("default")
+                .unwrap()
+                .unwrap()
+                .has_member("member-uid")
+        );
+    }
+
+    #[test]
+    fn default_org_member_cannot_leave_or_be_kicked() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+        service.add_member("default", "member-uid").unwrap();
+
+        assert_eq!(
+            service
+                .leave_member("default", "member-uid")
+                .expect_err("default member cannot leave"),
+            OrganizationError::CannotLeaveDefaultOrg
+        );
+        assert_eq!(
+            service
+                .kick_member("default", "ceo-uid", "member-uid")
+                .expect_err("default member cannot be kicked"),
+            OrganizationError::RestrictedDefaultOrgAction
+        );
+    }
+
+    #[test]
+    fn kick_member_moves_member_to_default_org() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+        let mut organization = Organization::player_org("org-1", "Player Org", "ceo-uid");
+        organization.members.push(OrganizationMember::new(
+            "member-uid",
+            OrganizationRole::Member,
+        ));
+        service.repository.save(organization).unwrap();
+
+        let transfer = service
+            .kick_member("org-1", "ceo-uid", "member-uid")
+            .expect("member should be kicked");
+
+        assert_eq!(transfer.uid, "member-uid");
+        assert!(
+            !service
+                .get("org-1")
+                .unwrap()
+                .unwrap()
+                .has_member("member-uid")
+        );
+        assert!(
+            service
+                .get("default")
+                .unwrap()
+                .unwrap()
+                .has_member("member-uid")
+        );
+    }
+
+    #[test]
+    fn create_player_org_moves_ceo_from_default_org() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+        service.add_member("default", "ceo-uid").unwrap();
+
+        let organization = service
+            .create_player_org("org-1", "Player Org", "ceo-uid")
+            .expect("player org should be created");
+
+        assert!(organization.is_ceo("ceo-uid"));
+        assert!(
+            !service
+                .get("default")
+                .unwrap()
+                .unwrap()
+                .has_member("ceo-uid")
+        );
+    }
+
+    #[test]
+    fn accept_invite_moves_member_from_previous_org() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+        service.add_member("default", "member-uid").unwrap();
+        service
+            .create_player_org("org-1", "Player Org", "ceo-uid")
+            .expect("player org should be created");
+        let invite = service
+            .create_invite("ceo-uid", "org-1", "member-uid")
+            .expect("invite should be created");
+
+        let (organization, _) = service
+            .accept_invite("member-uid", &invite.id.to_string())
+            .expect("invite should be accepted");
+
+        assert!(organization.has_member("member-uid"));
+        assert!(
+            !service
+                .get("default")
+                .unwrap()
+                .unwrap()
+                .has_member("member-uid")
+        );
+    }
+
+    #[test]
+    fn disband_player_org_reassigns_members_to_default_org() {
+        let service = OrganizationService::new(InMemoryOrganizationRepository::new());
+        service
+            .create_default_org()
+            .expect("default org should be created");
+        let mut organization = Organization::player_org("org-1", "Player Org", "ceo-uid");
+        organization.members.push(OrganizationMember::new(
+            "member-uid",
+            OrganizationRole::Member,
+        ));
+        service.repository.save(organization).unwrap();
+
+        let disband = service
+            .disband_player_org("org-1", "ceo-uid")
+            .expect("player org should disband");
+
+        assert_eq!(disband.disbanded.id, "org-1");
+        assert_eq!(disband.reassigned_uids, ["ceo-uid", "member-uid"]);
+        assert!(service.get("org-1").expect("lookup should work").is_none());
+        let default_org = service
+            .get("default")
+            .expect("lookup should work")
+            .expect("default org should exist");
+        assert!(default_org.has_member("ceo-uid"));
+        assert!(default_org.has_member("member-uid"));
+        assert!(!default_org.is_ceo("ceo-uid"));
     }
 
     #[test]

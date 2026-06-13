@@ -38,6 +38,7 @@ impl DomainEventHandler for VLockerActorCreatedHandler {
                     event: event.name(),
                     message: error.to_string(),
                 }),
+            _ => Ok(()),
         }
     }
 }

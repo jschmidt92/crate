@@ -13,6 +13,9 @@ pub enum WriteOp {
         table: &'static str,
         id: String,
     },
+    Batch {
+        ops: Vec<WriteOp>,
+    },
 }
 
 #[derive(Debug, Default)]

@@ -1,7 +1,11 @@
-use crate::{bank, log};
+use crate::{events, log};
 use arma_rs::Group;
 use forge_lib::{
-    models::{OrganizationView, VGarage, VLocker},
+    models::{
+        DomainEvent, OrganizationCreated, OrganizationDisbanded, OrganizationInviteAccepted,
+        OrganizationInviteCreated, OrganizationInviteDeclined, OrganizationMemberKicked,
+        OrganizationMemberLeft, OrganizationPaydayIssued, OrganizationView, VGarage, VLocker,
+    },
     services::OrganizationService,
 };
 use std::sync::LazyLock;
@@ -14,6 +18,12 @@ pub fn group() -> Group {
     Group::new()
         .command("create_default", create_default)
         .command("create_player", create_player)
+        .command("disband", disband)
+        .command("create_invite", create_invite)
+        .command("accept_invite", accept_invite)
+        .command("decline_invite", decline_invite)
+        .command("leave_member", leave_member)
+        .command("kick_member", kick_member)
         .command("add_member", add_member)
         .command("get", get_organization)
         .command("get_by_member", get_by_member)
@@ -60,9 +70,138 @@ pub(crate) fn create_default(
 
 pub(crate) fn create_player(id: String, name: String, ceo_uid: String) -> String {
     match ORGANIZATION_SERVICE.create_player_org(&id, &name, &ceo_uid) {
-        Ok(organization) => serialize_organization(&organization),
+        Ok(organization) => {
+            events::publish(DomainEvent::OrganizationCreated(OrganizationCreated::new(
+                OrganizationView::from(&organization),
+                &ceo_uid,
+            )));
+            serialize_organization(&organization)
+        }
         Err(error) => {
             log::error(format_args!("failed to create player org {id}: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn disband(organization_id: String, ceo_uid: String) -> String {
+    match ORGANIZATION_SERVICE.disband_player_org(&organization_id, &ceo_uid) {
+        Ok(disband) => {
+            events::publish(DomainEvent::OrganizationDisbanded(
+                OrganizationDisbanded::new(
+                    disband.disbanded.clone(),
+                    &ceo_uid,
+                    disband.reassigned_uids.clone(),
+                ),
+            ));
+            serialize(&disband, "organization disband")
+        }
+        Err(error) => {
+            log::error(format_args!(
+                "failed to disband org {organization_id} by {ceo_uid}: {error}"
+            ));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn create_invite(
+    inviter_uid: String,
+    organization_id: String,
+    invitee_uid: String,
+) -> String {
+    match ORGANIZATION_SERVICE.create_invite(&inviter_uid, &organization_id, &invitee_uid) {
+        Ok(invite) => {
+            events::publish(DomainEvent::OrganizationInviteCreated(
+                OrganizationInviteCreated::new(invite.clone()),
+            ));
+            serialize(&invite, "organization invite")
+        }
+        Err(error) => {
+            log::error(format_args!(
+                "failed to create invite for {invitee_uid} to org {organization_id}: {error}"
+            ));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn accept_invite(invitee_uid: String, invite_id: String) -> String {
+    match ORGANIZATION_SERVICE.accept_invite(&invitee_uid, &invite_id) {
+        Ok((organization, invite)) => {
+            events::publish(DomainEvent::OrganizationInviteAccepted(
+                OrganizationInviteAccepted::new(invite),
+            ));
+            serialize_organization(&organization)
+        }
+        Err(error) => {
+            log::error(format_args!(
+                "failed to accept invite {invite_id} for {invitee_uid}: {error}"
+            ));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn decline_invite(invitee_uid: String, invite_id: String) -> String {
+    match ORGANIZATION_SERVICE.decline_invite(&invitee_uid, &invite_id) {
+        Ok(invite) => {
+            events::publish(DomainEvent::OrganizationInviteDeclined(
+                OrganizationInviteDeclined::new(invite.clone()),
+            ));
+            serialize(&invite, "organization invite")
+        }
+        Err(error) => {
+            log::error(format_args!(
+                "failed to decline invite {invite_id} for {invitee_uid}: {error}"
+            ));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn leave_member(organization_id: String, uid: String) -> String {
+    match ORGANIZATION_SERVICE.leave_member(&organization_id, &uid) {
+        Ok(transfer) => {
+            events::publish(DomainEvent::OrganizationMemberLeft(
+                OrganizationMemberLeft::new(
+                    transfer.organization.clone(),
+                    transfer.default_organization.clone(),
+                    &uid,
+                ),
+            ));
+            serialize(&transfer, "organization member transfer")
+        }
+        Err(error) => {
+            log::error(format_args!(
+                "failed to remove member {uid} from org {organization_id}: {error}"
+            ));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn kick_member(
+    organization_id: String,
+    actor_uid: String,
+    kicked_uid: String,
+) -> String {
+    match ORGANIZATION_SERVICE.kick_member(&organization_id, &actor_uid, &kicked_uid) {
+        Ok(transfer) => {
+            events::publish(DomainEvent::OrganizationMemberKicked(
+                OrganizationMemberKicked::new(
+                    transfer.organization.clone(),
+                    transfer.default_organization.clone(),
+                    &actor_uid,
+                    &kicked_uid,
+                ),
+            ));
+            serialize(&transfer, "organization member transfer")
+        }
+        Err(error) => {
+            log::error(format_args!(
+                "failed to kick member {kicked_uid} from org {organization_id}: {error}"
+            ));
             format!("Error: {error}")
         }
     }
@@ -108,7 +247,7 @@ pub(crate) fn issue_payday(
     amount: String,
     in_default_ceo_slot: String,
 ) -> String {
-    let payday = match ORGANIZATION_SERVICE.issue_payday(
+    let plan = match ORGANIZATION_SERVICE.prepare_payday(
         &uid,
         &organization_id,
         &amount,
@@ -123,21 +262,24 @@ pub(crate) fn issue_payday(
         }
     };
 
-    let amount = match payday.amount.parse() {
-        Some(amount) => amount,
-        None => return "Error: invalid payday amount".to_string(),
+    let payday = match crate::persistence::apply_payday_plan(plan) {
+        Ok(payday) => payday,
+        Err(error) => {
+            log::error(format_args!(
+                "failed to apply payday for org {organization_id}: {error}"
+            ));
+            return format!("Error: {error}");
+        }
     };
 
-    for recipient_uid in &payday.recipients {
-        if let Err(error) = bank::deposit_payday(recipient_uid, amount) {
-            log::error(format_args!(
-                "failed to deposit payday for recipient {recipient_uid}: {error}"
-            ));
-            return format!(
-                "Error: failed to deposit payday for recipient {recipient_uid}: {error}"
-            );
-        }
-    }
+    events::publish(DomainEvent::OrganizationPaydayIssued(
+        OrganizationPaydayIssued::new(
+            payday.organization.clone(),
+            &uid,
+            payday.amount.clone(),
+            payday.recipients.clone(),
+        ),
+    ));
 
     match serde_json::to_string(&payday) {
         Ok(json) => json,
@@ -153,11 +295,18 @@ fn parse_bool(value: &str) -> bool {
 }
 
 fn serialize_organization(organization: &forge_lib::models::Organization) -> String {
-    match serde_json::to_string(&OrganizationView::from(organization)) {
+    serialize(&OrganizationView::from(organization), "organization")
+}
+
+fn serialize<T>(value: &T, label: &str) -> String
+where
+    T: serde::Serialize,
+{
+    match serde_json::to_string(value) {
         Ok(json) => json,
         Err(error) => {
-            log::error(format_args!("failed to serialize organization: {error}"));
-            format!("Error: failed to serialize organization: {error}")
+            log::error(format_args!("failed to serialize {label}: {error}"));
+            format!("Error: failed to serialize {label}: {error}")
         }
     }
 }

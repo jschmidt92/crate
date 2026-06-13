@@ -38,6 +38,7 @@ impl DomainEventHandler for VGarageActorCreatedHandler {
                     event: event.name(),
                     message: error.to_string(),
                 }),
+            _ => Ok(()),
         }
     }
 }

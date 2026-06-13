@@ -60,8 +60,14 @@ pub enum OrganizationError {
     InvalidId,
     InvalidAmount,
     InvalidUid,
+    AlreadyMember,
+    CannotLeaveDefaultOrg,
     EmptyPayday,
     InsufficientFunds,
+    InviteNotFound,
+    InviteNotPending,
+    InviteeMismatch,
+    LastCeoCannotLeave,
     NotFound,
     NotMember,
     NotCeo,
@@ -75,8 +81,18 @@ impl std::fmt::Display for OrganizationError {
             Self::InvalidId => f.write_str("invalid organization id"),
             Self::InvalidAmount => f.write_str("invalid organization amount"),
             Self::InvalidUid => f.write_str("invalid organization member uid"),
+            Self::AlreadyMember => f.write_str("player is already an organization member"),
+            Self::CannotLeaveDefaultOrg => {
+                f.write_str("players cannot leave the default organization directly")
+            }
             Self::EmptyPayday => f.write_str("organization payday has no recipients"),
             Self::InsufficientFunds => f.write_str("organization has insufficient funds"),
+            Self::InviteNotFound => f.write_str("organization invite not found"),
+            Self::InviteNotPending => f.write_str("organization invite is not pending"),
+            Self::InviteeMismatch => f.write_str("organization invite is for a different player"),
+            Self::LastCeoCannotLeave => {
+                f.write_str("organization CEO must disband the organization instead of leaving")
+            }
             Self::NotFound => f.write_str("organization not found"),
             Self::NotMember => f.write_str("player is not an organization member"),
             Self::NotCeo => f.write_str("player is not the organization CEO"),

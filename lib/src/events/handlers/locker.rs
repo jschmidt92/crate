@@ -35,6 +35,7 @@ impl DomainEventHandler for LockerActorCreatedHandler {
                     event: event.name(),
                     message: error.to_string(),
                 }),
+            _ => Ok(()),
         }
     }
 }

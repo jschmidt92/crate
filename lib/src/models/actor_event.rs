@@ -3,19 +3,6 @@ use serde::{Deserialize, Serialize};
 use super::{Actor, ActorStartingConfig};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum DomainEvent {
-    ActorCreated(ActorCreated),
-}
-
-impl DomainEvent {
-    pub const fn name(&self) -> &'static str {
-        match self {
-            Self::ActorCreated(_) => "actor.created",
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActorCreated {
     pub actor: Actor,
     pub starting: ActorStartingConfig,

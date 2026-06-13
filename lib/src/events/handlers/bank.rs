@@ -21,6 +21,7 @@ impl DomainEventHandler for BankActorCreatedHandler {
 
                 Ok(())
             }
+            _ => Ok(()),
         }
     }
 }
