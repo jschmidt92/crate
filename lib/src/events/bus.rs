@@ -6,6 +6,16 @@ pub trait DomainEventHandler: Send + Sync {
     fn handle(&self, event: &DomainEvent) -> Result<(), EventError>;
 }
 
+pub trait EventPublisher: Send + Sync {
+    fn publish(&self, event: DomainEvent);
+
+    fn publish_all(&self, events: &[DomainEvent]) {
+        for event in events {
+            self.publish(event.clone());
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct EventBus {
     handlers: Vec<Arc<dyn DomainEventHandler>>,

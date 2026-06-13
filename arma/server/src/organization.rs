@@ -1,18 +1,28 @@
-use crate::{events, log};
+use crate::{
+    events::ServerEventPublisher,
+    features::organization::{OrganizationFeature, PersistencePaydayApplier},
+    log,
+};
 use arma_rs::Group;
 use forge_lib::{
-    models::{
-        DomainEvent, OrganizationCreated, OrganizationDisbanded, OrganizationInviteAccepted,
-        OrganizationInviteCreated, OrganizationInviteDeclined, OrganizationMemberKicked,
-        OrganizationMemberLeft, OrganizationPaydayIssued, OrganizationView, VGarage, VLocker,
-    },
+    models::{OrganizationView, VGarage, VLocker},
     services::OrganizationService,
 };
 use std::sync::LazyLock;
 
-static ORGANIZATION_SERVICE: LazyLock<
-    OrganizationService<crate::persistence::CachedOrganizationRepository>,
-> = LazyLock::new(|| OrganizationService::new(crate::persistence::organization_repository()));
+static ORGANIZATION_APP: LazyLock<
+    OrganizationFeature<
+        crate::persistence::CachedOrganizationRepository,
+        ServerEventPublisher,
+        PersistencePaydayApplier,
+    >,
+> = LazyLock::new(|| {
+    OrganizationFeature::new(
+        OrganizationService::new(crate::persistence::organization_repository()),
+        ServerEventPublisher,
+        PersistencePaydayApplier,
+    )
+});
 
 pub fn group() -> Group {
     Group::new()
@@ -55,7 +65,7 @@ pub(crate) fn create_default(
         }
     };
 
-    match ORGANIZATION_SERVICE.create_default_org_with_starting(
+    match ORGANIZATION_APP.create_default_org_with_starting(
         &starting_bank,
         &virtual_garage,
         &virtual_locker,
@@ -69,14 +79,8 @@ pub(crate) fn create_default(
 }
 
 pub(crate) fn create_player(id: String, name: String, ceo_uid: String) -> String {
-    match ORGANIZATION_SERVICE.create_player_org(&id, &name, &ceo_uid) {
-        Ok(organization) => {
-            events::publish(DomainEvent::OrganizationCreated(OrganizationCreated::new(
-                OrganizationView::from(&organization),
-                &ceo_uid,
-            )));
-            serialize_organization(&organization)
-        }
+    match ORGANIZATION_APP.create_player_org(&id, &name, &ceo_uid) {
+        Ok(organization) => serialize_organization(&organization),
         Err(error) => {
             log::error(format_args!("failed to create player org {id}: {error}"));
             format!("Error: {error}")
@@ -85,17 +89,8 @@ pub(crate) fn create_player(id: String, name: String, ceo_uid: String) -> String
 }
 
 pub(crate) fn disband(organization_id: String, ceo_uid: String) -> String {
-    match ORGANIZATION_SERVICE.disband_player_org(&organization_id, &ceo_uid) {
-        Ok(disband) => {
-            events::publish(DomainEvent::OrganizationDisbanded(
-                OrganizationDisbanded::new(
-                    disband.disbanded.clone(),
-                    &ceo_uid,
-                    disband.reassigned_uids.clone(),
-                ),
-            ));
-            serialize(&disband, "organization disband")
-        }
+    match ORGANIZATION_APP.disband_player_org(&organization_id, &ceo_uid) {
+        Ok(disband) => serialize(&disband, "organization disband"),
         Err(error) => {
             log::error(format_args!(
                 "failed to disband org {organization_id} by {ceo_uid}: {error}"
@@ -110,13 +105,8 @@ pub(crate) fn create_invite(
     organization_id: String,
     invitee_uid: String,
 ) -> String {
-    match ORGANIZATION_SERVICE.create_invite(&inviter_uid, &organization_id, &invitee_uid) {
-        Ok(invite) => {
-            events::publish(DomainEvent::OrganizationInviteCreated(
-                OrganizationInviteCreated::new(invite.clone()),
-            ));
-            serialize(&invite, "organization invite")
-        }
+    match ORGANIZATION_APP.create_invite(&inviter_uid, &organization_id, &invitee_uid) {
+        Ok(invite) => serialize(&invite, "organization invite"),
         Err(error) => {
             log::error(format_args!(
                 "failed to create invite for {invitee_uid} to org {organization_id}: {error}"
@@ -127,13 +117,8 @@ pub(crate) fn create_invite(
 }
 
 pub(crate) fn accept_invite(invitee_uid: String, invite_id: String) -> String {
-    match ORGANIZATION_SERVICE.accept_invite(&invitee_uid, &invite_id) {
-        Ok((organization, invite)) => {
-            events::publish(DomainEvent::OrganizationInviteAccepted(
-                OrganizationInviteAccepted::new(invite),
-            ));
-            serialize_organization(&organization)
-        }
+    match ORGANIZATION_APP.accept_invite(&invitee_uid, &invite_id) {
+        Ok(organization) => serialize_organization(&organization),
         Err(error) => {
             log::error(format_args!(
                 "failed to accept invite {invite_id} for {invitee_uid}: {error}"
@@ -144,13 +129,8 @@ pub(crate) fn accept_invite(invitee_uid: String, invite_id: String) -> String {
 }
 
 pub(crate) fn decline_invite(invitee_uid: String, invite_id: String) -> String {
-    match ORGANIZATION_SERVICE.decline_invite(&invitee_uid, &invite_id) {
-        Ok(invite) => {
-            events::publish(DomainEvent::OrganizationInviteDeclined(
-                OrganizationInviteDeclined::new(invite.clone()),
-            ));
-            serialize(&invite, "organization invite")
-        }
+    match ORGANIZATION_APP.decline_invite(&invitee_uid, &invite_id) {
+        Ok(invite) => serialize(&invite, "organization invite"),
         Err(error) => {
             log::error(format_args!(
                 "failed to decline invite {invite_id} for {invitee_uid}: {error}"
@@ -161,17 +141,8 @@ pub(crate) fn decline_invite(invitee_uid: String, invite_id: String) -> String {
 }
 
 pub(crate) fn leave_member(organization_id: String, uid: String) -> String {
-    match ORGANIZATION_SERVICE.leave_member(&organization_id, &uid) {
-        Ok(transfer) => {
-            events::publish(DomainEvent::OrganizationMemberLeft(
-                OrganizationMemberLeft::new(
-                    transfer.organization.clone(),
-                    transfer.default_organization.clone(),
-                    &uid,
-                ),
-            ));
-            serialize(&transfer, "organization member transfer")
-        }
+    match ORGANIZATION_APP.leave_member(&organization_id, &uid) {
+        Ok(transfer) => serialize(&transfer, "organization member transfer"),
         Err(error) => {
             log::error(format_args!(
                 "failed to remove member {uid} from org {organization_id}: {error}"
@@ -186,18 +157,8 @@ pub(crate) fn kick_member(
     actor_uid: String,
     kicked_uid: String,
 ) -> String {
-    match ORGANIZATION_SERVICE.kick_member(&organization_id, &actor_uid, &kicked_uid) {
-        Ok(transfer) => {
-            events::publish(DomainEvent::OrganizationMemberKicked(
-                OrganizationMemberKicked::new(
-                    transfer.organization.clone(),
-                    transfer.default_organization.clone(),
-                    &actor_uid,
-                    &kicked_uid,
-                ),
-            ));
-            serialize(&transfer, "organization member transfer")
-        }
+    match ORGANIZATION_APP.kick_member(&organization_id, &actor_uid, &kicked_uid) {
+        Ok(transfer) => serialize(&transfer, "organization member transfer"),
         Err(error) => {
             log::error(format_args!(
                 "failed to kick member {kicked_uid} from org {organization_id}: {error}"
@@ -208,7 +169,7 @@ pub(crate) fn kick_member(
 }
 
 pub(crate) fn add_member(organization_id: String, uid: String) -> String {
-    match ORGANIZATION_SERVICE.add_member(&organization_id, &uid) {
+    match ORGANIZATION_APP.add_member(&organization_id, &uid) {
         Ok(organization) => serialize_organization(&organization),
         Err(error) => {
             log::error(format_args!(
@@ -220,7 +181,7 @@ pub(crate) fn add_member(organization_id: String, uid: String) -> String {
 }
 
 pub(crate) fn get_organization(id: String) -> String {
-    match ORGANIZATION_SERVICE.get(&id) {
+    match ORGANIZATION_APP.get(&id) {
         Ok(Some(organization)) => serialize_organization(&organization),
         Ok(None) => "null".to_string(),
         Err(error) => {
@@ -231,7 +192,7 @@ pub(crate) fn get_organization(id: String) -> String {
 }
 
 pub(crate) fn get_by_member(uid: String) -> String {
-    match ORGANIZATION_SERVICE.get_by_member_uid(&uid) {
+    match ORGANIZATION_APP.get_by_member_uid(&uid) {
         Ok(Some(organization)) => serialize_organization(&organization),
         Ok(None) => "null".to_string(),
         Err(error) => {
@@ -247,7 +208,7 @@ pub(crate) fn issue_payday(
     amount: String,
     in_default_ceo_slot: String,
 ) -> String {
-    let plan = match ORGANIZATION_SERVICE.prepare_payday(
+    let payday = match ORGANIZATION_APP.issue_payday(
         &uid,
         &organization_id,
         &amount,
@@ -261,25 +222,6 @@ pub(crate) fn issue_payday(
             return format!("Error: {error}");
         }
     };
-
-    let payday = match crate::persistence::apply_payday_plan(plan) {
-        Ok(payday) => payday,
-        Err(error) => {
-            log::error(format_args!(
-                "failed to apply payday for org {organization_id}: {error}"
-            ));
-            return format!("Error: {error}");
-        }
-    };
-
-    events::publish(DomainEvent::OrganizationPaydayIssued(
-        OrganizationPaydayIssued::new(
-            payday.organization.clone(),
-            &uid,
-            payday.amount.clone(),
-            payday.recipients.clone(),
-        ),
-    ));
 
     match serde_json::to_string(&payday) {
         Ok(json) => json,

@@ -9,6 +9,7 @@ mod bank;
 mod command;
 mod config;
 mod events;
+mod features;
 mod fuel;
 mod garage;
 mod locker;

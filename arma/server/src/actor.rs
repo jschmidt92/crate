@@ -1,10 +1,16 @@
-use crate::{events, log};
+use crate::{events::ServerEventPublisher, features::actor::ActorFeature, log};
 use arma_rs::Group;
 use forge_lib::{models::ActorSnapshot, services::ActorService};
 use std::sync::LazyLock;
 
-static ACTOR_SERVICE: LazyLock<ActorService<crate::persistence::CachedActorRepository>> =
-    LazyLock::new(|| ActorService::new(crate::persistence::actor_repository()));
+static ACTOR_FEATURE: LazyLock<
+    ActorFeature<crate::persistence::CachedActorRepository, ServerEventPublisher>,
+> = LazyLock::new(|| {
+    ActorFeature::new(
+        ActorService::new(crate::persistence::actor_repository()),
+        ServerEventPublisher,
+    )
+});
 
 pub fn group() -> Group {
     Group::new()
@@ -24,19 +30,16 @@ pub(crate) fn init_actor(snapshot_json: String) -> String {
         }
     };
 
-    match ACTOR_SERVICE.init_or_create(snapshot) {
-        Ok(result) => {
-            events::publish_all(&result.events);
-            match serde_json::to_string(&result.actor) {
-                Ok(json) => json,
-                Err(error) => {
-                    log::error(format_args!(
-                        "failed to serialize actor init result: {error}"
-                    ));
-                    format!("Error: failed to serialize actor init result: {error}")
-                }
+    match ACTOR_FEATURE.init_or_create(snapshot) {
+        Ok(actor) => match serde_json::to_string(&actor) {
+            Ok(json) => json,
+            Err(error) => {
+                log::error(format_args!(
+                    "failed to serialize actor init result: {error}"
+                ));
+                format!("Error: failed to serialize actor init result: {error}")
             }
-        }
+        },
         Err(error) => {
             log::error(format_args!("failed to init actor: {error}"));
             format!("Error: {error}")
@@ -53,7 +56,7 @@ pub(crate) fn disconnect_actor(snapshot_json: String) -> String {
         }
     };
 
-    match ACTOR_SERVICE.disconnect(snapshot) {
+    match ACTOR_FEATURE.disconnect(snapshot) {
         Ok(actor) => match serde_json::to_string(&actor) {
             Ok(json) => json,
             Err(error) => {
@@ -71,7 +74,7 @@ pub(crate) fn disconnect_actor(snapshot_json: String) -> String {
 }
 
 pub(crate) fn disconnect_actor_uid(uid: String) -> String {
-    match ACTOR_SERVICE.get(&uid) {
+    match ACTOR_FEATURE.get(&uid) {
         Ok(_) => "OK".to_string(),
         Err(error) => {
             log::error(format_args!("failed to disconnect actor {uid}: {error}"));
@@ -81,7 +84,7 @@ pub(crate) fn disconnect_actor_uid(uid: String) -> String {
 }
 
 pub(crate) fn get_actor(uid: String) -> String {
-    match ACTOR_SERVICE.get(&uid) {
+    match ACTOR_FEATURE.get(&uid) {
         Ok(Some(actor)) => match serde_json::to_string(&actor) {
             Ok(json) => json,
             Err(error) => {
@@ -98,7 +101,7 @@ pub(crate) fn get_actor(uid: String) -> String {
 }
 
 pub(crate) fn delete_actor(uid: String) -> String {
-    match ACTOR_SERVICE.delete(&uid) {
+    match ACTOR_FEATURE.delete(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
             log::error(format_args!("failed to delete actor {uid}: {error}"));

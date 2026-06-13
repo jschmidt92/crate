@@ -11,6 +11,7 @@ pub struct ActorInitResult {
     pub events: Vec<DomainEvent>,
 }
 
+#[derive(Clone)]
 pub struct ActorService<R> {
     repository: R,
 }
