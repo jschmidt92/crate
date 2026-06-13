@@ -15,7 +15,7 @@ pub fn group() -> Group {
         .command("delete", delete_actor)
 }
 
-fn init_actor(snapshot_json: String) -> String {
+pub(crate) fn init_actor(snapshot_json: String) -> String {
     let snapshot = match serde_json::from_str::<ActorSnapshot>(&snapshot_json) {
         Ok(snapshot) => snapshot,
         Err(error) => {
@@ -41,7 +41,7 @@ fn init_actor(snapshot_json: String) -> String {
     }
 }
 
-fn disconnect_actor(snapshot_json: String) -> String {
+pub(crate) fn disconnect_actor(snapshot_json: String) -> String {
     let snapshot = match serde_json::from_str::<ActorSnapshot>(&snapshot_json) {
         Ok(snapshot) => snapshot,
         Err(error) => {
@@ -67,7 +67,7 @@ fn disconnect_actor(snapshot_json: String) -> String {
     }
 }
 
-fn disconnect_actor_uid(uid: String) -> String {
+pub(crate) fn disconnect_actor_uid(uid: String) -> String {
     match ACTOR_SERVICE.get(&uid) {
         Ok(_) => "OK".to_string(),
         Err(error) => {
@@ -77,7 +77,7 @@ fn disconnect_actor_uid(uid: String) -> String {
     }
 }
 
-fn get_actor(uid: String) -> String {
+pub(crate) fn get_actor(uid: String) -> String {
     match ACTOR_SERVICE.get(&uid) {
         Ok(Some(actor)) => match serde_json::to_string(&actor) {
             Ok(json) => json,
@@ -94,7 +94,7 @@ fn get_actor(uid: String) -> String {
     }
 }
 
-fn delete_actor(uid: String) -> String {
+pub(crate) fn delete_actor(uid: String) -> String {
     match ACTOR_SERVICE.delete(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {

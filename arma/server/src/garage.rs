@@ -15,7 +15,7 @@ pub fn group() -> Group {
         .command("delete", delete_garage)
 }
 
-fn init_garage(uid: String) -> String {
+pub(crate) fn init_garage(uid: String) -> String {
     match GARAGE_SERVICE.create_actor_garage(&uid) {
         Ok(garage) => serialize_garage(&garage),
         Err(error) => {
@@ -25,7 +25,7 @@ fn init_garage(uid: String) -> String {
     }
 }
 
-fn disconnect_garage(uid: String) -> String {
+pub(crate) fn disconnect_garage(uid: String) -> String {
     match GARAGE_SERVICE.disconnect(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
@@ -35,7 +35,7 @@ fn disconnect_garage(uid: String) -> String {
     }
 }
 
-fn get_garage(uid: String) -> String {
+pub(crate) fn get_garage(uid: String) -> String {
     match GARAGE_SERVICE.get(&uid) {
         Ok(Some(garage)) => serialize_garage(&garage),
         Ok(None) => "null".to_string(),
@@ -46,7 +46,7 @@ fn get_garage(uid: String) -> String {
     }
 }
 
-fn save_garage(garage_json: String) -> String {
+pub(crate) fn save_garage(garage_json: String) -> String {
     let garage = match serde_json::from_str::<PlayerGarage>(&garage_json) {
         Ok(garage) => garage,
         Err(error) => {
@@ -64,7 +64,7 @@ fn save_garage(garage_json: String) -> String {
     }
 }
 
-fn delete_garage(uid: String) -> String {
+pub(crate) fn delete_garage(uid: String) -> String {
     match GARAGE_SERVICE.delete(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {

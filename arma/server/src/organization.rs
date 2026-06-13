@@ -20,7 +20,7 @@ pub fn group() -> Group {
         .command("issue_payday", issue_payday)
 }
 
-fn create_default(
+pub(crate) fn create_default(
     starting_bank: String,
     virtual_garage_json: String,
     virtual_locker_json: String,
@@ -58,7 +58,7 @@ fn create_default(
     }
 }
 
-fn create_player(id: String, name: String, ceo_uid: String) -> String {
+pub(crate) fn create_player(id: String, name: String, ceo_uid: String) -> String {
     match ORGANIZATION_SERVICE.create_player_org(&id, &name, &ceo_uid) {
         Ok(organization) => serialize_organization(&organization),
         Err(error) => {
@@ -68,7 +68,7 @@ fn create_player(id: String, name: String, ceo_uid: String) -> String {
     }
 }
 
-fn add_member(organization_id: String, uid: String) -> String {
+pub(crate) fn add_member(organization_id: String, uid: String) -> String {
     match ORGANIZATION_SERVICE.add_member(&organization_id, &uid) {
         Ok(organization) => serialize_organization(&organization),
         Err(error) => {
@@ -80,7 +80,7 @@ fn add_member(organization_id: String, uid: String) -> String {
     }
 }
 
-fn get_organization(id: String) -> String {
+pub(crate) fn get_organization(id: String) -> String {
     match ORGANIZATION_SERVICE.get(&id) {
         Ok(Some(organization)) => serialize_organization(&organization),
         Ok(None) => "null".to_string(),
@@ -91,7 +91,7 @@ fn get_organization(id: String) -> String {
     }
 }
 
-fn get_by_member(uid: String) -> String {
+pub(crate) fn get_by_member(uid: String) -> String {
     match ORGANIZATION_SERVICE.get_by_member_uid(&uid) {
         Ok(Some(organization)) => serialize_organization(&organization),
         Ok(None) => "null".to_string(),
@@ -102,7 +102,7 @@ fn get_by_member(uid: String) -> String {
     }
 }
 
-fn issue_payday(
+pub(crate) fn issue_payday(
     uid: String,
     organization_id: String,
     amount: String,

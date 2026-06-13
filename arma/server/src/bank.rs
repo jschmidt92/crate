@@ -16,7 +16,7 @@ pub fn group() -> Group {
         .command("disconnect", disconnect_bank)
 }
 
-fn init_bank(uid: String, starting_cash: String, starting_bank: String) -> String {
+pub(crate) fn init_bank(uid: String, starting_cash: String, starting_bank: String) -> String {
     match BANK_SERVICE.init_player_account(&uid, &starting_cash, &starting_bank) {
         Ok(profile) => match serde_json::to_string(&profile) {
             Ok(json) => json,
@@ -32,7 +32,7 @@ fn init_bank(uid: String, starting_cash: String, starting_bank: String) -> Strin
     }
 }
 
-fn disconnect_bank(uid: String) -> String {
+pub(crate) fn disconnect_bank(uid: String) -> String {
     match BANK_SERVICE.disconnect_player_account(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {

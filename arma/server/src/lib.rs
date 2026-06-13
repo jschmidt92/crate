@@ -6,6 +6,7 @@ use tokio::runtime::{Builder, Runtime};
 
 mod actor;
 mod bank;
+mod command;
 mod config;
 mod fuel;
 mod garage;
@@ -13,6 +14,7 @@ mod locker;
 mod log;
 mod organization;
 mod persistence;
+mod transport;
 mod v_garage;
 mod v_locker;
 
@@ -22,6 +24,7 @@ use fuel::group as fuel_group;
 use garage::group as garage_group;
 use locker::group as locker_group;
 use organization::group as organization_group;
+use transport::group as transport_group;
 use v_garage::group as v_garage_group;
 use v_locker::group as v_locker_group;
 
@@ -52,6 +55,7 @@ fn init() -> Extension {
         .group("garage", garage_group())
         .group("locker", locker_group())
         .group("organization", organization_group())
+        .group("transport", transport_group())
         .group("v_garage", v_garage_group())
         .group("v_locker", v_locker_group())
         .finish()

@@ -18,7 +18,7 @@ pub fn group() -> Group {
         .command("delete", delete_locker)
 }
 
-fn init_locker(uid: String, unlocks_json: String) -> String {
+pub(crate) fn init_locker(uid: String, unlocks_json: String) -> String {
     let unlocks = match serde_json::from_str::<VLocker>(&unlocks_json) {
         Ok(unlocks) => unlocks,
         Err(error) => {
@@ -38,7 +38,7 @@ fn init_locker(uid: String, unlocks_json: String) -> String {
     }
 }
 
-fn disconnect_locker(uid: String) -> String {
+pub(crate) fn disconnect_locker(uid: String) -> String {
     match V_LOCKER_SERVICE.disconnect(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
@@ -50,7 +50,7 @@ fn disconnect_locker(uid: String) -> String {
     }
 }
 
-fn get_locker(uid: String) -> String {
+pub(crate) fn get_locker(uid: String) -> String {
     match V_LOCKER_SERVICE.get(&uid) {
         Ok(Some(locker)) => serialize_locker(&locker),
         Ok(None) => "null".to_string(),
@@ -61,7 +61,7 @@ fn get_locker(uid: String) -> String {
     }
 }
 
-fn save_locker(locker_json: String) -> String {
+pub(crate) fn save_locker(locker_json: String) -> String {
     let locker = match serde_json::from_str::<PlayerVLocker>(&locker_json) {
         Ok(locker) => locker,
         Err(error) => {
@@ -79,7 +79,7 @@ fn save_locker(locker_json: String) -> String {
     }
 }
 
-fn delete_locker(uid: String) -> String {
+pub(crate) fn delete_locker(uid: String) -> String {
     match V_LOCKER_SERVICE.delete(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {

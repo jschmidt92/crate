@@ -18,7 +18,7 @@ pub fn group() -> Group {
         .command("delete", delete_garage)
 }
 
-fn init_garage(uid: String, unlocks_json: String) -> String {
+pub(crate) fn init_garage(uid: String, unlocks_json: String) -> String {
     let unlocks = match serde_json::from_str::<VGarage>(&unlocks_json) {
         Ok(unlocks) => unlocks,
         Err(error) => {
@@ -38,7 +38,7 @@ fn init_garage(uid: String, unlocks_json: String) -> String {
     }
 }
 
-fn disconnect_garage(uid: String) -> String {
+pub(crate) fn disconnect_garage(uid: String) -> String {
     match V_GARAGE_SERVICE.disconnect(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
@@ -50,7 +50,7 @@ fn disconnect_garage(uid: String) -> String {
     }
 }
 
-fn get_garage(uid: String) -> String {
+pub(crate) fn get_garage(uid: String) -> String {
     match V_GARAGE_SERVICE.get(&uid) {
         Ok(Some(garage)) => serialize_garage(&garage),
         Ok(None) => "null".to_string(),
@@ -61,7 +61,7 @@ fn get_garage(uid: String) -> String {
     }
 }
 
-fn save_garage(garage_json: String) -> String {
+pub(crate) fn save_garage(garage_json: String) -> String {
     let garage = match serde_json::from_str::<PlayerVGarage>(&garage_json) {
         Ok(garage) => garage,
         Err(error) => {
@@ -79,7 +79,7 @@ fn save_garage(garage_json: String) -> String {
     }
 }
 
-fn delete_garage(uid: String) -> String {
+pub(crate) fn delete_garage(uid: String) -> String {
     match V_GARAGE_SERVICE.delete(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
