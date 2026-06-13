@@ -2,13 +2,12 @@ use crate::log;
 use arma_rs::Group;
 use forge_lib::{
     models::{PlayerVLocker, VLocker},
-    repositories::InMemoryVLockerRepository,
     services::VLockerService,
 };
 use std::sync::LazyLock;
 
-static V_LOCKER_SERVICE: LazyLock<VLockerService<InMemoryVLockerRepository>> =
-    LazyLock::new(|| VLockerService::new(InMemoryVLockerRepository::new()));
+static V_LOCKER_SERVICE: LazyLock<VLockerService<crate::persistence::CachedVLockerRepository>> =
+    LazyLock::new(|| VLockerService::new(crate::persistence::v_locker_repository()));
 
 pub fn group() -> Group {
     Group::new()

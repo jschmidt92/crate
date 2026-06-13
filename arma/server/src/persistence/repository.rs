@@ -1,0 +1,267 @@
+use super::{enqueue_delete, enqueue_upsert};
+use forge_lib::models::{PlayerGarage, PlayerLocker, PlayerVGarage, PlayerVLocker};
+use forge_lib::{
+    models::{Actor, Organization, PlayerBankProfile},
+    repositories::{
+        ActorRepository, BankRepository, GarageRepository, InMemoryActorRepository,
+        InMemoryBankRepository, InMemoryGarageRepository, InMemoryLockerRepository,
+        InMemoryOrganizationRepository, InMemoryVGarageRepository, InMemoryVLockerRepository,
+        LockerRepository, OrganizationRepository, VGarageRepository, VLockerRepository,
+    },
+    shared::{
+        ActorError, BankError, GarageError, LockerError, OrganizationError, VGarageError,
+        VLockerError,
+    },
+};
+
+#[derive(Clone)]
+pub struct CachedActorRepository {
+    cache: InMemoryActorRepository,
+}
+
+impl CachedActorRepository {
+    pub fn new() -> Self {
+        Self {
+            cache: InMemoryActorRepository::new(),
+        }
+    }
+}
+
+impl ActorRepository for CachedActorRepository {
+    fn find_by_uid(&self, uid: &str) -> Result<Option<Actor>, ActorError> {
+        self.cache.find_by_uid(uid)
+    }
+
+    fn save(&self, actor: Actor) -> Result<Actor, ActorError> {
+        let actor = self.cache.save(actor)?;
+        enqueue_upsert("actor", &actor.uid, &actor);
+        Ok(actor)
+    }
+
+    fn delete(&self, uid: &str) -> Result<(), ActorError> {
+        self.cache.delete(uid)?;
+        enqueue_delete("actor", uid);
+        Ok(())
+    }
+}
+
+pub(super) fn cache_actor(repository: &CachedActorRepository, actor: Actor) {
+    let _ = repository.cache.save(actor);
+}
+
+#[derive(Clone)]
+pub struct CachedBankRepository {
+    cache: InMemoryBankRepository,
+}
+
+impl CachedBankRepository {
+    pub fn new() -> Self {
+        Self {
+            cache: InMemoryBankRepository::new(),
+        }
+    }
+}
+
+impl BankRepository for CachedBankRepository {
+    fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerBankProfile>, BankError> {
+        self.cache.find_by_uid(uid)
+    }
+
+    fn save(&self, profile: PlayerBankProfile) -> Result<PlayerBankProfile, BankError> {
+        let profile = self.cache.save(profile)?;
+        enqueue_upsert("bank", &profile.uid, &profile);
+        Ok(profile)
+    }
+
+    fn delete(&self, uid: &str) -> Result<(), BankError> {
+        self.cache.delete(uid)?;
+        enqueue_delete("bank", uid);
+        Ok(())
+    }
+}
+
+pub(super) fn cache_bank_profile(repository: &CachedBankRepository, profile: PlayerBankProfile) {
+    let _ = repository.cache.save(profile);
+}
+
+#[derive(Clone)]
+pub struct CachedGarageRepository {
+    cache: InMemoryGarageRepository,
+}
+
+impl CachedGarageRepository {
+    pub fn new() -> Self {
+        Self {
+            cache: InMemoryGarageRepository::new(),
+        }
+    }
+}
+
+impl GarageRepository for CachedGarageRepository {
+    fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerGarage>, GarageError> {
+        self.cache.find_by_uid(uid)
+    }
+
+    fn save(&self, garage: PlayerGarage) -> Result<PlayerGarage, GarageError> {
+        let garage = self.cache.save(garage)?;
+        enqueue_upsert("garage", &garage.uid, &garage);
+        Ok(garage)
+    }
+
+    fn delete(&self, uid: &str) -> Result<(), GarageError> {
+        self.cache.delete(uid)?;
+        enqueue_delete("garage", uid);
+        Ok(())
+    }
+}
+
+pub(super) fn cache_garage(repository: &CachedGarageRepository, garage: PlayerGarage) {
+    let _ = repository.cache.save(garage);
+}
+
+#[derive(Clone)]
+pub struct CachedLockerRepository {
+    cache: InMemoryLockerRepository,
+}
+
+impl CachedLockerRepository {
+    pub fn new() -> Self {
+        Self {
+            cache: InMemoryLockerRepository::new(),
+        }
+    }
+}
+
+impl LockerRepository for CachedLockerRepository {
+    fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerLocker>, LockerError> {
+        self.cache.find_by_uid(uid)
+    }
+
+    fn save(&self, locker: PlayerLocker) -> Result<PlayerLocker, LockerError> {
+        let locker = self.cache.save(locker)?;
+        enqueue_upsert("locker", &locker.uid, &locker);
+        Ok(locker)
+    }
+
+    fn delete(&self, uid: &str) -> Result<(), LockerError> {
+        self.cache.delete(uid)?;
+        enqueue_delete("locker", uid);
+        Ok(())
+    }
+}
+
+pub(super) fn cache_locker(repository: &CachedLockerRepository, locker: PlayerLocker) {
+    let _ = repository.cache.save(locker);
+}
+
+#[derive(Clone)]
+pub struct CachedVGarageRepository {
+    cache: InMemoryVGarageRepository,
+}
+
+impl CachedVGarageRepository {
+    pub fn new() -> Self {
+        Self {
+            cache: InMemoryVGarageRepository::new(),
+        }
+    }
+}
+
+impl VGarageRepository for CachedVGarageRepository {
+    fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerVGarage>, VGarageError> {
+        self.cache.find_by_uid(uid)
+    }
+
+    fn save(&self, garage: PlayerVGarage) -> Result<PlayerVGarage, VGarageError> {
+        let garage = self.cache.save(garage)?;
+        enqueue_upsert("v_garage", &garage.uid, &garage);
+        Ok(garage)
+    }
+
+    fn delete(&self, uid: &str) -> Result<(), VGarageError> {
+        self.cache.delete(uid)?;
+        enqueue_delete("v_garage", uid);
+        Ok(())
+    }
+}
+
+pub(super) fn cache_v_garage(repository: &CachedVGarageRepository, garage: PlayerVGarage) {
+    let _ = repository.cache.save(garage);
+}
+
+#[derive(Clone)]
+pub struct CachedVLockerRepository {
+    cache: InMemoryVLockerRepository,
+}
+
+impl CachedVLockerRepository {
+    pub fn new() -> Self {
+        Self {
+            cache: InMemoryVLockerRepository::new(),
+        }
+    }
+}
+
+impl VLockerRepository for CachedVLockerRepository {
+    fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerVLocker>, VLockerError> {
+        self.cache.find_by_uid(uid)
+    }
+
+    fn save(&self, locker: PlayerVLocker) -> Result<PlayerVLocker, VLockerError> {
+        let locker = self.cache.save(locker)?;
+        enqueue_upsert("v_locker", &locker.uid, &locker);
+        Ok(locker)
+    }
+
+    fn delete(&self, uid: &str) -> Result<(), VLockerError> {
+        self.cache.delete(uid)?;
+        enqueue_delete("v_locker", uid);
+        Ok(())
+    }
+}
+
+pub(super) fn cache_v_locker(repository: &CachedVLockerRepository, locker: PlayerVLocker) {
+    let _ = repository.cache.save(locker);
+}
+
+#[derive(Clone)]
+pub struct CachedOrganizationRepository {
+    cache: InMemoryOrganizationRepository,
+}
+
+impl CachedOrganizationRepository {
+    pub fn new() -> Self {
+        Self {
+            cache: InMemoryOrganizationRepository::new(),
+        }
+    }
+}
+
+impl OrganizationRepository for CachedOrganizationRepository {
+    fn find_by_id(&self, id: &str) -> Result<Option<Organization>, OrganizationError> {
+        self.cache.find_by_id(id)
+    }
+
+    fn find_by_member_uid(&self, uid: &str) -> Result<Option<Organization>, OrganizationError> {
+        self.cache.find_by_member_uid(uid)
+    }
+
+    fn save(&self, organization: Organization) -> Result<Organization, OrganizationError> {
+        let organization = self.cache.save(organization)?;
+        enqueue_upsert("organization", &organization.id, &organization);
+        Ok(organization)
+    }
+
+    fn delete(&self, id: &str) -> Result<(), OrganizationError> {
+        self.cache.delete(id)?;
+        enqueue_delete("organization", id);
+        Ok(())
+    }
+}
+
+pub(super) fn cache_organization(
+    repository: &CachedOrganizationRepository,
+    organization: Organization,
+) {
+    let _ = repository.cache.save(organization);
+}

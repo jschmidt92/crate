@@ -2,13 +2,13 @@ use crate::{bank, log};
 use arma_rs::Group;
 use forge_lib::{
     models::{OrganizationView, VGarage, VLocker},
-    repositories::InMemoryOrganizationRepository,
     services::OrganizationService,
 };
 use std::sync::LazyLock;
 
-static ORGANIZATION_SERVICE: LazyLock<OrganizationService<InMemoryOrganizationRepository>> =
-    LazyLock::new(|| OrganizationService::new(InMemoryOrganizationRepository::new()));
+static ORGANIZATION_SERVICE: LazyLock<
+    OrganizationService<crate::persistence::CachedOrganizationRepository>,
+> = LazyLock::new(|| OrganizationService::new(crate::persistence::organization_repository()));
 
 pub fn group() -> Group {
     Group::new()

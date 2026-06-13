@@ -1,12 +1,10 @@
 use crate::log;
 use arma_rs::Group;
-use forge_lib::{
-    models::PlayerGarage, repositories::InMemoryGarageRepository, services::GarageService,
-};
+use forge_lib::{models::PlayerGarage, services::GarageService};
 use std::sync::LazyLock;
 
-static GARAGE_SERVICE: LazyLock<GarageService<InMemoryGarageRepository>> =
-    LazyLock::new(|| GarageService::new(InMemoryGarageRepository::new()));
+static GARAGE_SERVICE: LazyLock<GarageService<crate::persistence::CachedGarageRepository>> =
+    LazyLock::new(|| GarageService::new(crate::persistence::garage_repository()));
 
 pub fn group() -> Group {
     Group::new()

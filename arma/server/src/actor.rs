@@ -1,12 +1,10 @@
 use crate::log;
 use arma_rs::Group;
-use forge_lib::{
-    models::ActorSnapshot, repositories::InMemoryActorRepository, services::ActorService,
-};
+use forge_lib::{models::ActorSnapshot, services::ActorService};
 use std::sync::LazyLock;
 
-static ACTOR_SERVICE: LazyLock<ActorService<InMemoryActorRepository>> =
-    LazyLock::new(|| ActorService::new(InMemoryActorRepository::new()));
+static ACTOR_SERVICE: LazyLock<ActorService<crate::persistence::CachedActorRepository>> =
+    LazyLock::new(|| ActorService::new(crate::persistence::actor_repository()));
 
 pub fn group() -> Group {
     Group::new()

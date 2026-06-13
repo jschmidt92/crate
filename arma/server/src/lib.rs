@@ -6,11 +6,13 @@ use tokio::runtime::{Builder, Runtime};
 
 mod actor;
 mod bank;
+mod config;
 mod fuel;
 mod garage;
 mod locker;
 mod log;
 mod organization;
+mod persistence;
 mod v_garage;
 mod v_locker;
 
@@ -35,10 +37,14 @@ pub(crate) static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
 fn init() -> Extension {
     log::init();
     log::info(format_args!("initializing {}", get_version()));
+    let config = config::load();
+    persistence::init(config.database);
 
     Extension::build()
         .command("version", get_version)
         .command("status", get_status)
+        .command("database_status", get_database_status)
+        .command("config_path", get_config_path)
         .command("log_path", get_log_path)
         .group("actor", actor_group())
         .group("bank", bank_group())
@@ -54,6 +60,14 @@ fn init() -> Extension {
 fn get_status() -> String {
     log::info(format_args!("status requested"));
     "Server is running".to_string()
+}
+
+fn get_database_status() -> String {
+    persistence::status()
+}
+
+fn get_config_path() -> String {
+    config::path().display().to_string()
 }
 
 fn get_version() -> String {

@@ -2,14 +2,13 @@ use crate::log;
 use arma_rs::Group;
 use forge_lib::{
     models::{Money, PlayerBankProfileView},
-    repositories::InMemoryBankRepository,
     services::BankService,
     shared::BankError,
 };
 use std::sync::LazyLock;
 
-static BANK_SERVICE: LazyLock<BankService<InMemoryBankRepository>> =
-    LazyLock::new(|| BankService::new(InMemoryBankRepository::new()));
+static BANK_SERVICE: LazyLock<BankService<crate::persistence::CachedBankRepository>> =
+    LazyLock::new(|| BankService::new(crate::persistence::bank_repository()));
 
 pub fn group() -> Group {
     Group::new()

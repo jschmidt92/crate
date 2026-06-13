@@ -1,0 +1,10 @@
+[database]
+enabled = false
+endpoint = "127.0.0.1:8000"
+namespace = "forge"
+database = "forge"
+username = "root"
+password = "root"
+channel_capacity = 1024
+reconnect_initial_ms = 250
+reconnect_max_ms = 5000

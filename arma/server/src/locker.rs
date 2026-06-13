@@ -1,12 +1,10 @@
 use crate::log;
 use arma_rs::Group;
-use forge_lib::{
-    models::PlayerLocker, repositories::InMemoryLockerRepository, services::LockerService,
-};
+use forge_lib::{models::PlayerLocker, services::LockerService};
 use std::sync::LazyLock;
 
-static LOCKER_SERVICE: LazyLock<LockerService<InMemoryLockerRepository>> =
-    LazyLock::new(|| LockerService::new(InMemoryLockerRepository::new()));
+static LOCKER_SERVICE: LazyLock<LockerService<crate::persistence::CachedLockerRepository>> =
+    LazyLock::new(|| LockerService::new(crate::persistence::locker_repository()));
 
 pub fn group() -> Group {
     Group::new()
