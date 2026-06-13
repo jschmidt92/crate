@@ -1,5 +1,5 @@
 use forge_lib::{
-    models::{ServiceQuote, ServiceReceipt},
+    models::{Money, ServiceQuote, ServiceReceipt},
     repositories::BankRepository,
     services::RepairService,
     shared::ServiceError,
@@ -18,8 +18,12 @@ where
         Self { service }
     }
 
-    pub(crate) fn quote(&self, damage: f64) -> Result<ServiceQuote, ServiceError> {
-        self.service.quote(damage)
+    pub(crate) fn quote(
+        &self,
+        damage: f64,
+        full_repair_price: Money,
+    ) -> Result<ServiceQuote, ServiceError> {
+        self.service.quote_with_fee(damage, full_repair_price)
     }
 
     pub(crate) fn complete(
@@ -27,7 +31,9 @@ where
         uid: &str,
         plate: &str,
         damage: f64,
+        full_repair_price: Money,
     ) -> Result<ServiceReceipt, ServiceError> {
-        self.service.complete(uid, plate, damage)
+        self.service
+            .complete_with_fee(uid, plate, damage, full_repair_price)
     }
 }

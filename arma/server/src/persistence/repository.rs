@@ -1,16 +1,17 @@
 use super::{enqueue_delete, enqueue_upsert};
-use forge_lib::models::{PlayerGarage, PlayerLocker, PlayerVGarage, PlayerVLocker};
+use forge_lib::models::{Notification, PlayerGarage, PlayerLocker, PlayerVGarage, PlayerVLocker};
 use forge_lib::{
     models::{Actor, Organization, OrganizationInvite, PlayerBankProfile},
     repositories::{
         ActorRepository, BankRepository, GarageRepository, InMemoryActorRepository,
         InMemoryBankRepository, InMemoryGarageRepository, InMemoryLockerRepository,
-        InMemoryOrganizationRepository, InMemoryVGarageRepository, InMemoryVLockerRepository,
-        LockerRepository, OrganizationRepository, VGarageRepository, VLockerRepository,
+        InMemoryNotificationRepository, InMemoryOrganizationRepository, InMemoryVGarageRepository,
+        InMemoryVLockerRepository, LockerRepository, NotificationRepository,
+        OrganizationRepository, VGarageRepository, VLockerRepository,
     },
     shared::{
-        ActorError, BankError, GarageError, LockerError, OrganizationError, VGarageError,
-        VLockerError,
+        ActorError, BankError, GarageError, LockerError, NotificationError, OrganizationError,
+        VGarageError, VLockerError,
     },
 };
 
@@ -159,6 +160,67 @@ impl LockerRepository for CachedLockerRepository {
 
 pub(super) fn cache_locker(repository: &CachedLockerRepository, locker: PlayerLocker) {
     let _ = repository.cache.save(locker);
+}
+
+#[derive(Clone)]
+pub struct CachedNotificationRepository {
+    cache: InMemoryNotificationRepository,
+}
+
+impl CachedNotificationRepository {
+    pub fn new() -> Self {
+        Self {
+            cache: InMemoryNotificationRepository::new(),
+        }
+    }
+
+    pub(crate) fn save_without_enqueue(
+        &self,
+        notification: Notification,
+    ) -> Result<Notification, NotificationError> {
+        self.cache.save(notification)
+    }
+}
+
+impl NotificationRepository for CachedNotificationRepository {
+    fn list_by_uid(&self, uid: &str) -> Result<Vec<Notification>, NotificationError> {
+        self.cache.list_by_uid(uid)
+    }
+
+    fn list_unread_by_uid(&self, uid: &str) -> Result<Vec<Notification>, NotificationError> {
+        self.cache.list_unread_by_uid(uid)
+    }
+
+    fn find_by_id(&self, id: uuid::Uuid) -> Result<Option<Notification>, NotificationError> {
+        self.cache.find_by_id(id)
+    }
+
+    fn save(&self, notification: Notification) -> Result<Notification, NotificationError> {
+        let notification = self.cache.save(notification)?;
+        enqueue_upsert("notification", &notification.id.to_string(), &notification);
+        Ok(notification)
+    }
+
+    fn mark_read(&self, uid: &str, id: uuid::Uuid) -> Result<Notification, NotificationError> {
+        let notification = self.cache.mark_read(uid, id)?;
+        enqueue_upsert("notification", &notification.id.to_string(), &notification);
+        Ok(notification)
+    }
+
+    fn mark_all_read(&self, uid: &str) -> Result<Vec<Notification>, NotificationError> {
+        let notifications = self.cache.mark_all_read(uid)?;
+        for notification in &notifications {
+            enqueue_upsert("notification", &notification.id.to_string(), notification);
+        }
+        Ok(notifications)
+    }
+}
+
+pub(super) fn cache_notification(
+    repository: &CachedNotificationRepository,
+    notification: Notification,
+) {
+    let _ = repository.cache.save(notification);
 }
 
 #[derive(Clone)]

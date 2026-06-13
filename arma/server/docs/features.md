@@ -90,36 +90,36 @@ Current command groups:
 - `v_garage:*`
 - `v_locker:*`
 
-## Fuel
+## Refuel
 
 Main files:
 
 - `lib/src/models/fuel.rs`
 - `lib/src/models/service.rs`
 - `lib/src/models/transaction.rs`
-- `lib/src/services/fuel.rs`
-- `arma/server/src/fuel.rs`
-- `arma/server/src/features/fuel/*`
+- `lib/src/services/refuel.rs`
+- `arma/server/src/refuel.rs`
+- `arma/server/src/features/refuel/*`
 
-Fuel supports session-based refueling from Arma events and direct refuel completion commands. Completed refuels now charge the player bank account through `BankService` and return a `ServiceReceipt`.
+Refuel supports session-based refueling from Arma events and direct refuel completion commands. Completed refuels charge the player bank account through `BankService` and return a `ServiceReceipt`. Refuel prices are read from `CfgForgeMission >> Services >> Refuel`, with Rust defaults used by the domain service if a caller does not provide custom pricing.
 
 ```mermaid
 flowchart TD
-    Started[fuel:started] --> Session[store fueling session]
-    Tick[fuel:tick] --> Session
-    Stopped[fuel:stopped] --> Complete[FuelService::complete]
+    Started[refuel:started] --> Session[store fueling session]
+    Tick[refuel:tick] --> Session
+    Stopped[refuel:stopped] --> Complete[FuelService::complete_with_price]
     Complete --> Bank[BankService::withdraw_from_account]
     Bank --> Receipt[ServiceReceipt]
 ```
 
 Current commands:
 
-- `fuel:started`
-- `fuel:tick`
-- `fuel:stopped`
-- `fuel:price`
-- `fuel:quote`
-- `fuel:refuel`
+- `refuel:started`
+- `refuel:tick`
+- `refuel:stopped`
+- `refuel:price`
+- `refuel:quote`
+- `refuel:complete`
 
 ## Gameplay Services
 
@@ -136,15 +136,18 @@ Main files:
 - `arma/server/src/features/rearm/*`
 - `arma/server/src/features/medical/*`
 
-Repair, rearm, refuel, and paid medical healing are service-style workflows. They validate the requested work, calculate a quote, charge the player bank account through `BankService` when needed, and return a consistent `ServiceReceipt`.
+Repair, rearm, refuel, and medical services are service-style workflows. They validate the requested work, calculate a quote, charge the player bank account through `BankService` when the configured fee is greater than zero, and return a consistent `ServiceReceipt`.
 
-Current pricing defaults:
+Mission-config pricing:
 
-- Refuel: fuel-type price per liter from `FuelType`.
-- Repair: damage ratio multiplied by the full repair price.
-- Rearm: rearm unit count multiplied by the rearm unit price.
-- Medical respawn: recorded as a zero-cost service receipt.
-- Medical full heal: fixed full-heal price.
+- `CfgForgeMission >> Services >> Refuel >> regularPricePerLiter`
+- `CfgForgeMission >> Services >> Refuel >> jeta1PricePerLiter`
+- `CfgForgeMission >> Services >> Repair >> fullRepairPrice`
+- `CfgForgeMission >> Services >> Rearm >> unitPrice`
+- `CfgForgeMission >> Services >> Medical >> respawnPrice`
+- `CfgForgeMission >> Services >> Medical >> fullHealPrice`
+
+If a configured value is `0.00`, the service completes without a bank withdrawal. Rust services keep internal defaults so direct callers still have a deterministic fallback.
 
 Current commands:
 

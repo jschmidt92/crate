@@ -10,9 +10,7 @@ class CfgPatches {
         requiredAddons[] = {
             "forge_server_main",
             "forge_server_common",
-            "forge_server_extension",
-            "forge_server_actor",
-            "forge_server_notification"
+            "forge_server_extension"
         };
         units[] = {};
         weapons[] = {};

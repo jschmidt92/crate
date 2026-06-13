@@ -14,11 +14,13 @@ mod garage;
 mod locker;
 mod log;
 mod medical;
+mod notification;
 mod organization;
 mod persistence;
 mod rearm;
 mod refuel;
 mod repair;
+mod response;
 mod transport;
 mod v_garage;
 mod v_locker;
@@ -28,9 +30,10 @@ use bank::group as bank_group;
 use garage::group as garage_group;
 use locker::group as locker_group;
 use medical::group as medical_group;
+use notification::group as notification_group;
 use organization::group as organization_group;
 use rearm::group as rearm_group;
-use refuel::group as fuel_group;
+use refuel::group as refuel_group;
 use repair::group as repair_group;
 use transport::group as transport_group;
 use v_garage::group as v_garage_group;
@@ -60,10 +63,11 @@ fn init() -> Extension {
         .command("log_path", get_log_path)
         .group("actor", actor_group())
         .group("bank", bank_group())
-        .group("refuel", fuel_group())
+        .group("refuel", refuel_group())
         .group("garage", garage_group())
         .group("locker", locker_group())
         .group("medical", medical_group())
+        .group("notification", notification_group())
         .group("organization", organization_group())
         .group("rearm", rearm_group())
         .group("repair", repair_group())

@@ -58,6 +58,33 @@ For each domain event, it queues a batch write that may include:
 
 The queued writes are handled by the persistence worker.
 
+Notification rows are also cached in the server notification repository when the durable backend creates them. This lets SQF fetch newly-created notifications immediately without waiting for the background database writer.
+
+## Arma/SQF Notification Surface
+
+The Rust extension exposes these notification commands:
+
+- `notification:list`
+- `notification:unread`
+- `notification:mark_read`
+- `notification:mark_all_read`
+
+The server SQF addon wraps those commands in:
+
+```text
+arma/server/addons/notification/functions
+```
+
+Current helper functions:
+
+- `forge_server_notification_fnc_list`
+- `forge_server_notification_fnc_unread`
+- `forge_server_notification_fnc_markRead`
+- `forge_server_notification_fnc_markAllRead`
+- `forge_server_notification_fnc_notifyPlayer`
+
+`notifyPlayer` fetches unread notifications for a player and sends them to that player with `systemChat`. The bank player-init flow calls it after bank initialization, so players see unread organization notifications when they join. A later UI can replace `notifyPlayer` with a custom inbox while keeping the same Rust command surface.
+
 ## Current Events
 
 Actor:

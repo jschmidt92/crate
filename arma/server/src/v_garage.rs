@@ -1,4 +1,4 @@
-use crate::{features::v_garage::VGarageFeature, log};
+use crate::{features::v_garage::VGarageFeature, log, response};
 use arma_rs::Group;
 use forge_lib::{
     models::{PlayerVGarage, VGarage},
@@ -34,7 +34,7 @@ pub(crate) fn init_garage(uid: String, unlocks_json: String) -> String {
     };
 
     match V_GARAGE_FEATURE.init(&uid, &unlocks) {
-        Ok(garage) => serialize_garage(&garage),
+        Ok(garage) => response::json(&garage, "virtual garage"),
         Err(error) => {
             log::error(format_args!("failed to init virtual garage {uid}: {error}"));
             format!("Error: {error}")
@@ -56,7 +56,7 @@ pub(crate) fn disconnect_garage(uid: String) -> String {
 
 pub(crate) fn get_garage(uid: String) -> String {
     match V_GARAGE_FEATURE.get(&uid) {
-        Ok(Some(garage)) => serialize_garage(&garage),
+        Ok(Some(garage)) => response::json(&garage, "virtual garage"),
         Ok(None) => "null".to_string(),
         Err(error) => {
             log::error(format_args!("failed to get virtual garage {uid}: {error}"));
@@ -75,7 +75,7 @@ pub(crate) fn save_garage(garage_json: String) -> String {
     };
 
     match V_GARAGE_FEATURE.save(garage) {
-        Ok(garage) => serialize_garage(&garage),
+        Ok(garage) => response::json(&garage, "virtual garage"),
         Err(error) => {
             log::error(format_args!("failed to save virtual garage: {error}"));
             format!("Error: {error}")
@@ -93,11 +93,4 @@ pub(crate) fn delete_garage(uid: String) -> String {
             format!("Error: {error}")
         }
     }
-}
-
-fn serialize_garage(garage: &PlayerVGarage) -> String {
-    serde_json::to_string(garage).unwrap_or_else(|error| {
-        log::error(format_args!("failed to serialize virtual garage: {error}"));
-        format!("Error: failed to serialize virtual garage: {error}")
-    })
 }

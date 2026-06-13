@@ -1,4 +1,4 @@
-use crate::{features::garage::GarageFeature, log};
+use crate::{features::garage::GarageFeature, log, response};
 use arma_rs::Group;
 use forge_lib::{models::PlayerGarage, services::GarageService};
 use std::sync::LazyLock;
@@ -19,7 +19,7 @@ pub fn group() -> Group {
 
 pub(crate) fn init_garage(uid: String) -> String {
     match GARAGE_FEATURE.init(&uid) {
-        Ok(garage) => serialize_garage(&garage),
+        Ok(garage) => response::json(&garage, "garage"),
         Err(error) => {
             log::error(format_args!("failed to init garage {uid}: {error}"));
             format!("Error: {error}")
@@ -39,7 +39,7 @@ pub(crate) fn disconnect_garage(uid: String) -> String {
 
 pub(crate) fn get_garage(uid: String) -> String {
     match GARAGE_FEATURE.get(&uid) {
-        Ok(Some(garage)) => serialize_garage(&garage),
+        Ok(Some(garage)) => response::json(&garage, "garage"),
         Ok(None) => "null".to_string(),
         Err(error) => {
             log::error(format_args!("failed to get garage {uid}: {error}"));
@@ -58,7 +58,7 @@ pub(crate) fn save_garage(garage_json: String) -> String {
     };
 
     match GARAGE_FEATURE.save(garage) {
-        Ok(garage) => serialize_garage(&garage),
+        Ok(garage) => response::json(&garage, "garage"),
         Err(error) => {
             log::error(format_args!("failed to save garage: {error}"));
             format!("Error: {error}")
@@ -74,11 +74,4 @@ pub(crate) fn delete_garage(uid: String) -> String {
             format!("Error: {error}")
         }
     }
-}
-
-fn serialize_garage(garage: &PlayerGarage) -> String {
-    serde_json::to_string(garage).unwrap_or_else(|error| {
-        log::error(format_args!("failed to serialize garage: {error}"));
-        format!("Error: failed to serialize garage: {error}")
-    })
 }

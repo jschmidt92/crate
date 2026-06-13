@@ -1,5 +1,5 @@
 use forge_lib::{
-    models::{FuelType, ServiceQuote, ServiceReceipt},
+    models::{FuelType, Money, ServiceQuote, ServiceReceipt},
     repositories::BankRepository,
     services::FuelService,
     shared::ServiceError,
@@ -26,8 +26,10 @@ where
         &self,
         liters: f64,
         fuel_type: FuelType,
+        price_per_liter: Money,
     ) -> Result<ServiceQuote, ServiceError> {
-        self.service.quote(liters, fuel_type)
+        self.service
+            .quote_with_price(liters, fuel_type, price_per_liter)
     }
 
     pub(crate) fn complete(
@@ -36,7 +38,9 @@ where
         plate: &str,
         liters: f64,
         fuel_type: FuelType,
+        price_per_liter: Money,
     ) -> Result<ServiceReceipt, ServiceError> {
-        self.service.complete(uid, plate, liters, fuel_type)
+        self.service
+            .complete_with_price(uid, plate, liters, fuel_type, price_per_liter)
     }
 }

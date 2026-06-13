@@ -12,6 +12,8 @@ The default organization is a framework convention. Its id is `default`, and its
 
 `CfgForgeMission >> DefaultOrganization` controls default org starting state. Money values should stay quoted strings. Use `startingBank` for org funds, `paydayAmount` for the default org payday amount, `Locker` for default organization virtual arsenal unlocks, and `VirtualGarage` for default organization virtual garage unlocks.
 
+`CfgForgeMission >> Services` controls service charges. Money values should stay quoted strings. Refuel uses per-liter prices, repair uses a full-repair price multiplied by vehicle damage, rearm uses a per-unit price, and medical uses fixed respawn/full-heal prices. Set any value to `"0.00"` for a no-cost service.
+
 Virtual arsenal unlocks use the mission config label `Locker`, matching the previous framework shape. Use category arrays under `CfgForgeMission >> Actor >> Locker`, for example `weapons[] = {"hgun_P07_F"};`.
 
 Virtual garage unlocks are category arrays under `CfgForgeMission >> Actor >> VirtualGarage`, for example `cars[] = {"B_Quadbike_01_F"};`.

@@ -53,6 +53,7 @@ if !(_bank isEqualType createHashMap) exitWith {
 private _player = [_uid] call EFUNC(common,getPlayerByUID);
 if !(isNull _player) then {
     [CRPC(bank,responseInitBank), [_bank], _player] call CFUNC(targetEvent);
+    [_player, false] call EFUNC(notification,notifyPlayer);
 };
 [SRPC(garage,initPlayer), [_uid]] call CFUNC(localEvent);
 

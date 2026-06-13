@@ -1,8 +1,8 @@
 use super::model::WriteOp;
 use crate::{config::DatabaseConfig, log};
 use forge_lib::models::{
-    Actor, Organization, OrganizationInvite, PlayerBankProfile, PlayerGarage, PlayerLocker,
-    PlayerVGarage, PlayerVLocker,
+    Actor, Notification, Organization, OrganizationInvite, PlayerBankProfile, PlayerGarage,
+    PlayerLocker, PlayerVGarage, PlayerVLocker,
 };
 use surrealdb::{Surreal, engine::remote::ws::Client, engine::remote::ws::Ws, opt::auth::Root};
 
@@ -11,6 +11,7 @@ pub struct HydratedRecords {
     pub bank_profiles: Vec<PlayerBankProfile>,
     pub garages: Vec<PlayerGarage>,
     pub lockers: Vec<PlayerLocker>,
+    pub notifications: Vec<Notification>,
     pub organizations: Vec<Organization>,
     pub organization_invites: Vec<OrganizationInvite>,
     pub v_garages: Vec<PlayerVGarage>,
@@ -101,6 +102,7 @@ pub async fn hydrate(repository: &SurrealRepository) -> HydratedRecords {
         bank_profiles: select_table(&repository.db, "bank", "bank").await,
         garages: select_table(&repository.db, "garage", "garage").await,
         lockers: select_table(&repository.db, "locker", "locker").await,
+        notifications: select_table(&repository.db, "notification", "notification").await,
         organizations: select_table(&repository.db, "organization", "organization").await,
         organization_invites: select_table(
             &repository.db,

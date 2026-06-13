@@ -3,6 +3,7 @@ pub(crate) mod bank;
 pub(crate) mod garage;
 pub(crate) mod locker;
 pub(crate) mod medical;
+pub(crate) mod notification;
 pub(crate) mod organization;
 pub(crate) mod rearm;
 pub(crate) mod refuel;

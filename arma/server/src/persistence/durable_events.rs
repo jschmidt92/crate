@@ -1,4 +1,4 @@
-use super::{enqueue, model::WriteOp};
+use super::{NOTIFICATION_REPOSITORY, enqueue, model::WriteOp};
 
 pub(crate) struct DurableEventBackend;
 
@@ -255,6 +255,9 @@ fn push_notification(
     ops: &mut Vec<WriteOp>,
     notification: forge_lib::models::Notification,
 ) -> Result<(), String> {
+    let notification = NOTIFICATION_REPOSITORY
+        .save_without_enqueue(notification)
+        .map_err(|error| error.to_string())?;
     let value = serde_json::to_value(&notification).map_err(|error| error.to_string())?;
     ops.push(WriteOp::Upsert {
         table: "notification",

@@ -7,8 +7,8 @@ mod surreal;
 
 use crate::{config::DatabaseConfig, log};
 use forge_lib::models::{
-    Actor, Organization, PlayerBankProfile, PlayerGarage, PlayerLocker, PlayerVGarage,
-    PlayerVLocker,
+    Actor, Notification, Organization, PlayerBankProfile, PlayerGarage, PlayerLocker,
+    PlayerVGarage, PlayerVLocker,
 };
 use std::sync::LazyLock;
 
@@ -16,13 +16,14 @@ pub(crate) use durable_events::DurableEventBackend;
 pub use payday::apply_payday_plan;
 pub use repository::{
     CachedActorRepository, CachedBankRepository, CachedGarageRepository, CachedLockerRepository,
-    CachedOrganizationRepository, CachedVGarageRepository, CachedVLockerRepository,
+    CachedNotificationRepository, CachedOrganizationRepository, CachedVGarageRepository,
+    CachedVLockerRepository,
 };
 
 use model::WriteOp;
 use repository::{
-    cache_actor, cache_bank_profile, cache_garage, cache_locker, cache_organization,
-    cache_organization_invite, cache_v_garage, cache_v_locker,
+    cache_actor, cache_bank_profile, cache_garage, cache_locker, cache_notification,
+    cache_organization, cache_organization_invite, cache_v_garage, cache_v_locker,
 };
 use service::PersistenceService;
 
@@ -33,6 +34,8 @@ static GARAGE_REPOSITORY: LazyLock<CachedGarageRepository> =
     LazyLock::new(CachedGarageRepository::new);
 static LOCKER_REPOSITORY: LazyLock<CachedLockerRepository> =
     LazyLock::new(CachedLockerRepository::new);
+static NOTIFICATION_REPOSITORY: LazyLock<CachedNotificationRepository> =
+    LazyLock::new(CachedNotificationRepository::new);
 static ORGANIZATION_REPOSITORY: LazyLock<CachedOrganizationRepository> =
     LazyLock::new(CachedOrganizationRepository::new);
 static V_GARAGE_REPOSITORY: LazyLock<CachedVGarageRepository> =
@@ -46,6 +49,7 @@ pub fn init(config: DatabaseConfig) {
     let _ = &*BANK_REPOSITORY;
     let _ = &*GARAGE_REPOSITORY;
     let _ = &*LOCKER_REPOSITORY;
+    let _ = &*NOTIFICATION_REPOSITORY;
     let _ = &*ORGANIZATION_REPOSITORY;
     let _ = &*V_GARAGE_REPOSITORY;
     let _ = &*V_LOCKER_REPOSITORY;
@@ -80,6 +84,10 @@ pub fn locker_repository() -> CachedLockerRepository {
     LOCKER_REPOSITORY.clone()
 }
 
+pub fn notification_repository() -> CachedNotificationRepository {
+    NOTIFICATION_REPOSITORY.clone()
+}
+
 pub fn organization_repository() -> CachedOrganizationRepository {
     ORGANIZATION_REPOSITORY.clone()
 }
@@ -111,6 +119,10 @@ pub(super) fn hydrate_cache(records: surreal::HydratedRecords) {
 
     for locker in records.lockers {
         cache_locker(&LOCKER_REPOSITORY, locker);
+    }
+
+    for notification in records.notifications {
+        cache_notification(&NOTIFICATION_REPOSITORY, notification);
     }
 
     for organization in records.organizations {
@@ -181,6 +193,7 @@ fn _type_guards(
     _: PlayerBankProfile,
     _: PlayerGarage,
     _: PlayerLocker,
+    _: Notification,
     _: Organization,
     _: PlayerVGarage,
     _: PlayerVLocker,

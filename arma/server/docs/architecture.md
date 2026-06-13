@@ -12,17 +12,17 @@ The server crate depends on `forge-lib`; `forge-lib` does not depend on the serv
 Most extension calls follow this path:
 
 ```mermaid
-flowchart TD
-    Arma[Arma command] --> Route[command.rs or arma-rs group]
-    Route --> Command[command module]
-    Command --> Feature[feature workflow]
+flowchart LR
+    Arma[Arma command] --> Route[Route command]
+    Route --> Command[Command module]
+    Command --> Feature[Feature workflow]
     Feature --> Service[forge-lib service]
-    Service --> Repository[repository trait]
-    Feature --> Event{Domain event?}
-    Event -->|yes| Bus[central EventBus]
+    Service --> Repository[Repository trait]
+    Repository --> Response[Return response]
+
+    Feature --> Event[Optional domain event]
+    Event --> Bus[Central EventBus]
     Bus --> Durable[DurableEventBackend]
-    Event -->|no| Done[return response]
-    Repository --> Done
 ```
 
 The command module should stay thin. It should parse command arguments, call the appropriate workflow, serialize the result, and log failures.
@@ -99,7 +99,7 @@ features/bank/
 ```
 
 ```text
-features/fuel/
+features/refuel/
 features/rearm/
 features/repair/
 features/medical/

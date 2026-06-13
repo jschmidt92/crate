@@ -1,8 +1,8 @@
-use crate::{features::repair::RepairFeature, log};
+use crate::{features::repair::RepairFeature, log, response};
 use arma_rs::Group;
 use forge_lib::{
     services::{BankService, RepairService},
-    shared::ServiceError,
+    shared::{ServiceError, parse_non_negative_money},
 };
 use std::sync::LazyLock;
 
@@ -19,13 +19,16 @@ pub fn group() -> Group {
         .command("complete", repair_complete)
 }
 
-pub(crate) fn repair_quote(damage: String) -> String {
+pub(crate) fn repair_quote(damage: String, full_repair_price: String) -> String {
     let Ok(damage) = parse_damage(&damage) else {
         return format!("Error: {}", ServiceError::InvalidDamage);
     };
+    let Ok(full_repair_price) = parse_non_negative_money(&full_repair_price) else {
+        return format!("Error: {}", ServiceError::InvalidAmount);
+    };
 
-    match REPAIR_FEATURE.quote(damage) {
-        Ok(quote) => serialize_repair(&quote, "repair quote"),
+    match REPAIR_FEATURE.quote(damage, full_repair_price) {
+        Ok(quote) => response::json(&quote, "repair quote"),
         Err(error) => {
             log::error(format_args!("failed to quote repair: {error}"));
             format!("Error: {error}")
@@ -33,13 +36,21 @@ pub(crate) fn repair_quote(damage: String) -> String {
     }
 }
 
-pub(crate) fn repair_complete(uid: String, plate: String, damage: String) -> String {
+pub(crate) fn repair_complete(
+    uid: String,
+    plate: String,
+    damage: String,
+    full_repair_price: String,
+) -> String {
     let Ok(damage) = parse_damage(&damage) else {
         return format!("Error: {}", ServiceError::InvalidDamage);
     };
+    let Ok(full_repair_price) = parse_non_negative_money(&full_repair_price) else {
+        return format!("Error: {}", ServiceError::InvalidAmount);
+    };
 
-    match REPAIR_FEATURE.complete(&uid, &plate, damage) {
-        Ok(receipt) => serialize_repair(&receipt, "repair receipt"),
+    match REPAIR_FEATURE.complete(&uid, &plate, damage, full_repair_price) {
+        Ok(receipt) => response::json(&receipt, "repair receipt"),
         Err(error) => {
             log::error(format_args!("failed to complete repair for {uid}: {error}"));
             format!("Error: {error}")
@@ -51,14 +62,4 @@ fn parse_damage(value: &str) -> Result<f64, ServiceError> {
     value
         .parse::<f64>()
         .map_err(|_| ServiceError::InvalidDamage)
-}
-
-fn serialize_repair<T>(value: &T, label: &str) -> String
-where
-    T: serde::Serialize,
-{
-    serde_json::to_string(value).unwrap_or_else(|error| {
-        log::error(format_args!("failed to serialize {label}: {error}"));
-        format!("Error: failed to serialize {label}: {error}")
-    })
 }

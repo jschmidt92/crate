@@ -1,5 +1,6 @@
 use crate::{
-    actor, bank, garage, locker, medical, organization, rearm, refuel, repair, v_garage, v_locker,
+    actor, bank, garage, locker, medical, notification, organization, rearm, refuel, repair,
+    v_garage, v_locker,
 };
 
 pub(crate) fn dispatch(command: &str, args: Vec<String>) -> String {
@@ -15,8 +16,8 @@ pub(crate) fn dispatch(command: &str, args: Vec<String>) -> String {
         "bank:withdraw" => binary(args, bank::withdraw_bank),
         "bank:transfer" => ternary(args, bank::transfer_bank),
         "bank:disconnect" => unary(args, bank::disconnect_bank),
-        "refuel:quote" => binary(args, refuel::quote),
-        "refuel:refuel" => quaternary(args, refuel::refuel_complete),
+        "refuel:quote" => ternary(args, refuel::quote),
+        "refuel:complete" => quinary(args, refuel::refuel_complete),
         "garage:init" => unary(args, garage::init_garage),
         "garage:disconnect" => unary(args, garage::disconnect_garage),
         "garage:get" => unary(args, garage::get_garage),
@@ -27,8 +28,12 @@ pub(crate) fn dispatch(command: &str, args: Vec<String>) -> String {
         "locker:get" => unary(args, locker::get_locker),
         "locker:save" => unary(args, locker::save_locker),
         "locker:delete" => unary(args, locker::delete_locker),
-        "medical:respawn" => unary(args, medical::medical_respawn),
-        "medical:heal" => unary(args, medical::medical_heal),
+        "medical:respawn" => binary(args, medical::medical_respawn),
+        "medical:heal" => binary(args, medical::medical_heal),
+        "notification:list" => unary(args, notification::list_notifications),
+        "notification:unread" => unary(args, notification::unread_notifications),
+        "notification:mark_read" => binary(args, notification::mark_read_notification),
+        "notification:mark_all_read" => unary(args, notification::mark_all_read_notifications),
         "organization:create_default" => ternary(args, organization::create_default),
         "organization:create_player" => ternary(args, organization::create_player),
         "organization:disband" => binary(args, organization::disband),
@@ -41,10 +46,10 @@ pub(crate) fn dispatch(command: &str, args: Vec<String>) -> String {
         "organization:get" => unary(args, organization::get_organization),
         "organization:get_by_member" => unary(args, organization::get_by_member),
         "organization:issue_payday" => quaternary(args, organization::issue_payday),
-        "rearm:quote" => unary(args, rearm::rearm_quote),
-        "rearm:complete" => ternary(args, rearm::rearm_complete),
-        "repair:quote" => unary(args, repair::repair_quote),
-        "repair:complete" => ternary(args, repair::repair_complete),
+        "rearm:quote" => binary(args, rearm::rearm_quote),
+        "rearm:complete" => quaternary(args, rearm::rearm_complete),
+        "repair:quote" => binary(args, repair::repair_quote),
+        "repair:complete" => quaternary(args, repair::repair_complete),
         "v_garage:init" => binary(args, v_garage::init_garage),
         "v_garage:disconnect" => unary(args, v_garage::disconnect_garage),
         "v_garage:get" => unary(args, v_garage::get_garage),
@@ -85,4 +90,11 @@ fn quaternary(args: Vec<String>, f: fn(String, String, String, String) -> String
         return "Error: invalid argument count".to_string();
     };
     f(a, b, c, d)
+}
+
+fn quinary(args: Vec<String>, f: fn(String, String, String, String, String) -> String) -> String {
+    let Ok([a, b, c, d, e]) = <[String; 5]>::try_from(args) else {
+        return "Error: invalid argument count".to_string();
+    };
+    f(a, b, c, d, e)
 }

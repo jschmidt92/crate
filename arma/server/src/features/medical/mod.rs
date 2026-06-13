@@ -1,5 +1,7 @@
 use forge_lib::{
-    models::ServiceReceipt, repositories::BankRepository, services::MedicalService,
+    models::{Money, ServiceReceipt},
+    repositories::BankRepository,
+    services::MedicalService,
     shared::ServiceError,
 };
 
@@ -16,11 +18,19 @@ where
         Self { service }
     }
 
-    pub(crate) fn record_respawn(&self, uid: &str) -> Result<ServiceReceipt, ServiceError> {
-        self.service.record_respawn(uid)
+    pub(crate) fn record_respawn(
+        &self,
+        uid: &str,
+        respawn_price: Money,
+    ) -> Result<ServiceReceipt, ServiceError> {
+        self.service.record_respawn_with_fee(uid, respawn_price)
     }
 
-    pub(crate) fn full_heal(&self, uid: &str) -> Result<ServiceReceipt, ServiceError> {
-        self.service.full_heal(uid)
+    pub(crate) fn full_heal(
+        &self,
+        uid: &str,
+        full_heal_price: Money,
+    ) -> Result<ServiceReceipt, ServiceError> {
+        self.service.full_heal_with_fee(uid, full_heal_price)
     }
 }

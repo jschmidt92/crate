@@ -4,6 +4,26 @@
  */
 
 class CfgForgeMission {
+    class Services {
+        class Refuel {
+            regularPricePerLiter = "1.00";
+            jeta1PricePerLiter = "1.80";
+        };
+
+        class Repair {
+            fullRepairPrice = "2500.00";
+        };
+
+        class Rearm {
+            unitPrice = "75.00";
+        };
+
+        class Medical {
+            respawnPrice = "0.00";
+            fullHealPrice = "250.00";
+        };
+    };
+
     class DefaultOrganization {
         startingBank = "0.00";
         paydayAmount = "0.00";

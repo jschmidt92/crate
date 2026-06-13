@@ -25,6 +25,33 @@ impl From<String> for BankError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NotificationError {
+    InvalidId,
+    InvalidUid,
+    NotFound,
+    Repository(String),
+}
+
+impl std::fmt::Display for NotificationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidId => f.write_str("invalid notification id"),
+            Self::InvalidUid => f.write_str("invalid notification uid"),
+            Self::NotFound => f.write_str("notification not found"),
+            Self::Repository(error) => write!(f, "notification repository error: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for NotificationError {}
+
+impl From<String> for NotificationError {
+    fn from(value: String) -> Self {
+        Self::Repository(value)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ServiceError {
     InvalidAmount,
@@ -191,7 +218,7 @@ impl std::fmt::Display for GarageError {
             Self::InvalidUid => f.write_str("invalid garage uid"),
             Self::InvalidPlate => f.write_str("invalid vehicle plate"),
             Self::InvalidClassname => f.write_str("invalid vehicle classname"),
-            Self::InvalidFuel => f.write_str("invalid vehicle refuel"),
+            Self::InvalidFuel => f.write_str("invalid vehicle fuel"),
             Self::InvalidDamage => f.write_str("invalid vehicle damage"),
             Self::InvalidHitPoints => f.write_str("invalid vehicle hit points"),
             Self::Repository(error) => write!(f, "garage repository error: {error}"),

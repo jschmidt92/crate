@@ -3,6 +3,7 @@ pub mod bank;
 pub mod garage;
 pub mod locker;
 pub mod medical;
+pub mod notification;
 pub mod organization;
 pub mod rearm;
 pub mod refuel;
@@ -18,6 +19,7 @@ pub use bank::{
 pub use garage::GarageService;
 pub use locker::LockerService;
 pub use medical::MedicalService;
+pub use notification::NotificationService;
 pub use organization::OrganizationService;
 pub use rearm::RearmService;
 pub use refuel::FuelService;

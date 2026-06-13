@@ -1,7 +1,7 @@
 use crate::{
     events::ServerEventPublisher,
     features::organization::{OrganizationFeature, PersistencePaydayApplier},
-    log,
+    log, response,
 };
 use arma_rs::Group;
 use forge_lib::{
@@ -90,7 +90,7 @@ pub(crate) fn create_player(id: String, name: String, ceo_uid: String) -> String
 
 pub(crate) fn disband(organization_id: String, ceo_uid: String) -> String {
     match ORGANIZATION_APP.disband_player_org(&organization_id, &ceo_uid) {
-        Ok(disband) => serialize(&disband, "organization disband"),
+        Ok(disband) => response::json(&disband, "organization disband"),
         Err(error) => {
             log::error(format_args!(
                 "failed to disband org {organization_id} by {ceo_uid}: {error}"
@@ -106,7 +106,7 @@ pub(crate) fn create_invite(
     invitee_uid: String,
 ) -> String {
     match ORGANIZATION_APP.create_invite(&inviter_uid, &organization_id, &invitee_uid) {
-        Ok(invite) => serialize(&invite, "organization invite"),
+        Ok(invite) => response::json(&invite, "organization invite"),
         Err(error) => {
             log::error(format_args!(
                 "failed to create invite for {invitee_uid} to org {organization_id}: {error}"
@@ -130,7 +130,7 @@ pub(crate) fn accept_invite(invitee_uid: String, invite_id: String) -> String {
 
 pub(crate) fn decline_invite(invitee_uid: String, invite_id: String) -> String {
     match ORGANIZATION_APP.decline_invite(&invitee_uid, &invite_id) {
-        Ok(invite) => serialize(&invite, "organization invite"),
+        Ok(invite) => response::json(&invite, "organization invite"),
         Err(error) => {
             log::error(format_args!(
                 "failed to decline invite {invite_id} for {invitee_uid}: {error}"
@@ -142,7 +142,7 @@ pub(crate) fn decline_invite(invitee_uid: String, invite_id: String) -> String {
 
 pub(crate) fn leave_member(organization_id: String, uid: String) -> String {
     match ORGANIZATION_APP.leave_member(&organization_id, &uid) {
-        Ok(transfer) => serialize(&transfer, "organization member transfer"),
+        Ok(transfer) => response::json(&transfer, "organization member transfer"),
         Err(error) => {
             log::error(format_args!(
                 "failed to remove member {uid} from org {organization_id}: {error}"
@@ -158,7 +158,7 @@ pub(crate) fn kick_member(
     kicked_uid: String,
 ) -> String {
     match ORGANIZATION_APP.kick_member(&organization_id, &actor_uid, &kicked_uid) {
-        Ok(transfer) => serialize(&transfer, "organization member transfer"),
+        Ok(transfer) => response::json(&transfer, "organization member transfer"),
         Err(error) => {
             log::error(format_args!(
                 "failed to kick member {kicked_uid} from org {organization_id}: {error}"
@@ -223,10 +223,7 @@ pub(crate) fn issue_payday(
         }
     };
 
-    serde_json::to_string(&payday).unwrap_or_else(|error| {
-        log::error(format_args!("failed to serialize payday result: {error}"));
-        format!("Error: failed to serialize payday result: {error}")
-    })
+    response::json(&payday, "payday result")
 }
 
 fn parse_bool(value: &str) -> bool {
@@ -234,15 +231,5 @@ fn parse_bool(value: &str) -> bool {
 }
 
 fn serialize_organization(organization: &forge_lib::models::Organization) -> String {
-    serialize(&OrganizationView::from(organization), "organization")
-}
-
-fn serialize<T>(value: &T, label: &str) -> String
-where
-    T: serde::Serialize,
-{
-    serde_json::to_string(value).unwrap_or_else(|error| {
-        log::error(format_args!("failed to serialize {label}: {error}"));
-        format!("Error: failed to serialize {label}: {error}")
-    })
+    response::json(&OrganizationView::from(organization), "organization")
 }

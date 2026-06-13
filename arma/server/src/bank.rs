@@ -1,4 +1,4 @@
-use crate::{features::bank::BankFeature, log};
+use crate::{features::bank::BankFeature, log, response};
 use arma_rs::Group;
 use forge_lib::{models::Money, services::BankService, shared::BankError};
 use std::sync::LazyLock;
@@ -18,10 +18,7 @@ pub fn group() -> Group {
 
 pub(crate) fn init_bank(uid: String, starting_cash: String, starting_bank: String) -> String {
     match BANK_FEATURE.init_player_account(&uid, &starting_cash, &starting_bank) {
-        Ok(profile) => serde_json::to_string(&profile).unwrap_or_else(|error| {
-            log::error(format_args!("failed to serialize bank profile: {error}"));
-            format!("Error: failed to serialize bank profile: {error}")
-        }),
+        Ok(profile) => response::json(&profile, "bank profile"),
         Err(error) => {
             log::error(format_args!("failed to init bank profile {uid}: {error}"));
             format!("Error: {error}")
@@ -31,7 +28,7 @@ pub(crate) fn init_bank(uid: String, starting_cash: String, starting_bank: Strin
 
 pub(crate) fn get_bank(uid: String) -> String {
     match BANK_FEATURE.get_account(&uid) {
-        Ok(Some(profile)) => serialize_bank(&profile, "bank profile"),
+        Ok(Some(profile)) => response::json(&profile, "bank profile"),
         Ok(None) => "null".to_string(),
         Err(error) => {
             log::error(format_args!("failed to get bank profile {uid}: {error}"));
@@ -46,7 +43,7 @@ pub(crate) fn deposit_bank(uid: String, amount: String) -> String {
     };
 
     match BANK_FEATURE.deposit_to_account(&uid, amount) {
-        Ok(profile) => serialize_bank(&profile, "bank profile"),
+        Ok(profile) => response::json(&profile, "bank profile"),
         Err(error) => {
             log::error(format_args!(
                 "failed to deposit to bank profile {uid}: {error}"
@@ -62,7 +59,7 @@ pub(crate) fn withdraw_bank(uid: String, amount: String) -> String {
     };
 
     match BANK_FEATURE.withdraw_from_account(&uid, amount) {
-        Ok(profile) => serialize_bank(&profile, "bank profile"),
+        Ok(profile) => response::json(&profile, "bank profile"),
         Err(error) => {
             log::error(format_args!(
                 "failed to withdraw from bank profile {uid}: {error}"
@@ -78,7 +75,7 @@ pub(crate) fn transfer_bank(from_uid: String, to_uid: String, amount: String) ->
     };
 
     match BANK_FEATURE.transfer_between_accounts(&from_uid, &to_uid, amount) {
-        Ok((from, to)) => serialize_bank(
+        Ok((from, to)) => response::json(
             &serde_json::json!({ "from": from, "to": to }),
             "bank transfer",
         ),
@@ -107,14 +104,4 @@ fn parse_amount(amount: &str) -> Result<Money, BankError> {
     amount
         .parse::<Money>()
         .map_err(|_| BankError::InvalidAmount)
-}
-
-fn serialize_bank<T>(value: &T, label: &str) -> String
-where
-    T: serde::Serialize,
-{
-    serde_json::to_string(value).unwrap_or_else(|error| {
-        log::error(format_args!("failed to serialize {label}: {error}"));
-        format!("Error: failed to serialize {label}: {error}")
-    })
 }

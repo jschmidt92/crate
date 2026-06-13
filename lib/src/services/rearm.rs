@@ -21,7 +21,15 @@ where
     }
 
     pub fn quote(&self, units: u32) -> Result<ServiceQuote, ServiceError> {
-        let amount = rearm_total(units)?;
+        self.quote_with_fee(units, default_rearm_unit_price())
+    }
+
+    pub fn quote_with_fee(
+        &self,
+        units: u32,
+        unit_price: Money,
+    ) -> Result<ServiceQuote, ServiceError> {
+        let amount = rearm_total(units, unit_price)?;
 
         Ok(ServiceQuote {
             kind: ServiceKind::Rearm,
@@ -36,11 +44,23 @@ where
         plate: &str,
         units: u32,
     ) -> Result<ServiceReceipt, ServiceError> {
+        self.complete_with_fee(uid, plate, units, default_rearm_unit_price())
+    }
+
+    pub fn complete_with_fee(
+        &self,
+        uid: &str,
+        plate: &str,
+        units: u32,
+        unit_price: Money,
+    ) -> Result<ServiceReceipt, ServiceError> {
         validate_uid(uid)?;
         validate_plate(plate)?;
 
-        let amount = rearm_total(units)?;
-        self.bank.withdraw_from_account(uid, amount)?;
+        let amount = rearm_total(units, unit_price)?;
+        if amount.is_positive() {
+            self.bank.withdraw_from_account(uid, amount)?;
+        }
 
         Ok(ServiceReceipt {
             uid: uid.to_string(),
@@ -51,12 +71,19 @@ where
     }
 }
 
-fn rearm_total(units: u32) -> Result<Money, ServiceError> {
+fn rearm_total(units: u32, unit_price: Money) -> Result<Money, ServiceError> {
     if units == 0 {
         return Err(ServiceError::InvalidAmount);
     }
+    if unit_price.cents() < 0 {
+        return Err(ServiceError::InvalidAmount);
+    }
 
-    Money::from_major(f64::from(units) * REARM_UNIT_PRICE).ok_or(ServiceError::InvalidAmount)
+    Money::from_major(f64::from(units) * unit_price.as_major()).ok_or(ServiceError::InvalidAmount)
+}
+
+fn default_rearm_unit_price() -> Money {
+    Money::from_major(REARM_UNIT_PRICE).unwrap_or(Money::ZERO)
 }
 
 #[cfg(test)]
@@ -81,5 +108,16 @@ mod tests {
             .expect("account lookup should succeed")
             .expect("account should exist");
         assert_eq!(account.account.balance.as_str(), "700.00");
+    }
+
+    #[test]
+    fn complete_rearm_allows_zero_configured_price() {
+        let service = RearmService::new(BankService::new(InMemoryBankRepository::new()));
+
+        let receipt = service
+            .complete_with_fee("steam:local-dev", "ABC123", 4, Money::ZERO)
+            .expect("zero-cost rearm should complete");
+
+        assert_eq!(receipt.amount.as_str(), "0.00");
     }
 }
