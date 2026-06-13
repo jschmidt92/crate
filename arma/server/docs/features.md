@@ -35,13 +35,23 @@ Main files:
 - `lib/src/services/bank.rs`
 - `lib/src/repositories/bank.rs`
 - `arma/server/src/bank.rs`
+- `arma/server/src/features/bank/*`
 - `arma/server/src/persistence/payday.rs`
 
-Bank profiles hold player cash and account balances. Organization payday uses server persistence code to apply the organization debit and recipient bank credits as one queued SurrealDB transaction batch.
+Bank profiles hold player cash and account balances. Player bank-account reads and money movement go through `BankService`. Organization payday still applies the organization debit and recipient bank credits as one queued SurrealDB transaction batch, but recipient bank credits are prepared through `BankService` before persistence batches the writes.
+
+Bank server workflows are organized as:
+
+- `account.rs`: initialize, read, deposit, withdraw, and transfer player bank funds.
+- `lifecycle.rs`: disconnect player bank profile.
 
 Current commands:
 
 - `bank:init`
+- `bank:get`
+- `bank:deposit`
+- `bank:withdraw`
+- `bank:transfer`
 - `bank:disconnect`
 
 ## Garage and Locker
@@ -60,8 +70,18 @@ Main files:
 - `arma/server/src/locker.rs`
 - `arma/server/src/v_garage.rs`
 - `arma/server/src/v_locker.rs`
+- `arma/server/src/features/garage/*`
+- `arma/server/src/features/locker/*`
+- `arma/server/src/features/v_garage/*`
+- `arma/server/src/features/v_locker/*`
 
 Physical garage/locker data and virtual unlock collections are separate models and repositories.
+
+These server workflows use the same slice names:
+
+- `lifecycle.rs`: initialize, disconnect, and delete records.
+- `query.rs`: get records by player uid.
+- `storage.rs`: save full records.
 
 Current command groups:
 
@@ -75,11 +95,65 @@ Current command groups:
 Main files:
 
 - `lib/src/models/fuel.rs`
+- `lib/src/models/service.rs`
 - `lib/src/models/transaction.rs`
-- `lib/src/services/bank.rs`
+- `lib/src/services/fuel.rs`
 - `arma/server/src/fuel.rs`
+- `arma/server/src/features/fuel/*`
 
-Fuel transactions currently validate transaction totals and return a receipt. The fuel path is not yet as deeply integrated with durable banking as organization payday.
+Fuel supports session-based refueling from Arma events and direct refuel completion commands. Completed refuels now charge the player bank account through `BankService` and return a `ServiceReceipt`.
+
+```mermaid
+flowchart TD
+    Started[fuel:started] --> Session[store fueling session]
+    Tick[fuel:tick] --> Session
+    Stopped[fuel:stopped] --> Complete[FuelService::complete]
+    Complete --> Bank[BankService::withdraw_from_account]
+    Bank --> Receipt[ServiceReceipt]
+```
+
+Current commands:
+
+- `fuel:started`
+- `fuel:tick`
+- `fuel:stopped`
+- `fuel:price`
+- `fuel:quote`
+- `fuel:refuel`
+
+## Gameplay Services
+
+Main files:
+
+- `lib/src/models/service.rs`
+- `lib/src/services/repair.rs`
+- `lib/src/services/rearm.rs`
+- `lib/src/services/medical.rs`
+- `arma/server/src/repair.rs`
+- `arma/server/src/rearm.rs`
+- `arma/server/src/medical.rs`
+- `arma/server/src/features/repair/*`
+- `arma/server/src/features/rearm/*`
+- `arma/server/src/features/medical/*`
+
+Repair, rearm, refuel, and paid medical healing are service-style workflows. They validate the requested work, calculate a quote, charge the player bank account through `BankService` when needed, and return a consistent `ServiceReceipt`.
+
+Current pricing defaults:
+
+- Refuel: fuel-type price per liter from `FuelType`.
+- Repair: damage ratio multiplied by the full repair price.
+- Rearm: rearm unit count multiplied by the rearm unit price.
+- Medical respawn: recorded as a zero-cost service receipt.
+- Medical full heal: fixed full-heal price.
+
+Current commands:
+
+- `repair:quote`
+- `repair:complete`
+- `rearm:quote`
+- `rearm:complete`
+- `medical:respawn`
+- `medical:heal`
 
 ## Organization
 
@@ -120,7 +194,8 @@ Organization server workflows are organized as vertical slices:
 Payday is split into two phases:
 
 1. `OrganizationService::prepare_payday` validates permissions, recipients, amount, and organization balance.
-2. `persistence::apply_payday_plan` applies the organization debit and all recipient bank credits as a queued transaction batch.
+2. `BankService::prepare_deposits` prepares recipient bank credits.
+3. `persistence::apply_payday_plan` applies the organization debit and all recipient bank credits as a queued transaction batch.
 
 After the money movement is applied in memory and queued for persistence, the server publishes `OrganizationPaydayIssued`. The durable event backend records the event, an audit row, and recipient notifications.
 

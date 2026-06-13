@@ -6,6 +6,7 @@ use crate::{
     repositories::BankRepository,
     shared::BankError,
 };
+use std::collections::BTreeMap;
 
 #[derive(Clone)]
 pub struct BankService<R> {
@@ -56,6 +57,106 @@ where
         profile.account.deposit(amount);
 
         Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
+    }
+
+    pub fn get_account(&self, uid: &str) -> Result<Option<PlayerBankProfileView>, BankError> {
+        validate_uid(uid)?;
+
+        Ok(self
+            .repository
+            .find_by_uid(uid)?
+            .as_ref()
+            .map(PlayerBankProfileView::from))
+    }
+
+    pub fn withdraw_from_account(
+        &self,
+        uid: &str,
+        amount: Money,
+    ) -> Result<PlayerBankProfileView, BankError> {
+        validate_uid(uid)?;
+        if !amount.is_positive() {
+            return Err(BankError::InvalidAmount);
+        }
+
+        let mut profile = self
+            .repository
+            .find_by_uid(uid)?
+            .ok_or(BankError::InsufficientFunds)?;
+
+        if !profile.account.withdraw(amount) {
+            return Err(BankError::InsufficientFunds);
+        }
+
+        Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
+    }
+
+    pub fn transfer_between_accounts(
+        &self,
+        from_uid: &str,
+        to_uid: &str,
+        amount: Money,
+    ) -> Result<(PlayerBankProfileView, PlayerBankProfileView), BankError> {
+        validate_uid(from_uid)?;
+        validate_uid(to_uid)?;
+        if from_uid == to_uid {
+            return Err(BankError::InvalidActorUid);
+        }
+        if !amount.is_positive() {
+            return Err(BankError::InvalidAmount);
+        }
+
+        let mut from_profile = self
+            .repository
+            .find_by_uid(from_uid)?
+            .ok_or(BankError::InsufficientFunds)?;
+
+        if !from_profile.account.withdraw(amount) {
+            return Err(BankError::InsufficientFunds);
+        }
+
+        let mut to_profile = self
+            .repository
+            .find_by_uid(to_uid)?
+            .unwrap_or_else(|| PlayerBankProfile::new(to_uid));
+        to_profile.account.deposit(amount);
+
+        let from_profile = self.repository.save(from_profile)?;
+        let to_profile = self.repository.save(to_profile)?;
+
+        Ok((
+            PlayerBankProfileView::from(&from_profile),
+            PlayerBankProfileView::from(&to_profile),
+        ))
+    }
+
+    pub fn prepare_deposits(
+        &self,
+        deposits: &[(String, Money)],
+    ) -> Result<Vec<PlayerBankProfile>, BankError> {
+        let mut totals = BTreeMap::new();
+
+        for (uid, amount) in deposits {
+            validate_uid(uid)?;
+            if !amount.is_positive() {
+                return Err(BankError::InvalidAmount);
+            }
+
+            let total = totals.entry(uid.clone()).or_insert(Money::ZERO);
+            *total = *total + *amount;
+        }
+
+        let mut profiles = Vec::with_capacity(totals.len());
+        for (uid, amount) in totals {
+            let mut profile = self
+                .repository
+                .find_by_uid(&uid)?
+                .unwrap_or_else(|| PlayerBankProfile::new(&uid));
+            profile.account.deposit(amount);
+            profiles.push(profile);
+        }
+
+        Ok(profiles)
     }
 
     pub fn disconnect_player_account(&self, uid: &str) -> Result<(), BankError> {
@@ -130,7 +231,7 @@ pub async fn process_fuel_transaction(
         uid: transaction.uid,
         amount: total,
         description: format!(
-            "{:.2} liters of {} fuel for {}",
+            "{:.2} liters of {} refuel for {}",
             transaction.liters, transaction.fuel_type, transaction.plate
         ),
     })
@@ -226,5 +327,65 @@ mod tests {
 
         assert_eq!(profile.cash.as_str(), "0.00");
         assert_eq!(profile.account.balance.as_str(), "25.00");
+    }
+
+    #[test]
+    fn bank_service_withdraws_from_existing_account() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        service
+            .init_player_account("steam:local-dev", "0.00", "100.00")
+            .expect("account should be created");
+
+        let profile = service
+            .withdraw_from_account("steam:local-dev", Money::from_cents(2500))
+            .expect("withdraw should succeed");
+
+        assert_eq!(profile.account.balance.as_str(), "75.00");
+    }
+
+    #[test]
+    fn bank_service_rejects_overdraft() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        service
+            .init_player_account("steam:local-dev", "0.00", "10.00")
+            .expect("account should be created");
+
+        assert!(matches!(
+            service.withdraw_from_account("steam:local-dev", Money::from_cents(2500)),
+            Err(BankError::InsufficientFunds)
+        ));
+    }
+
+    #[test]
+    fn bank_service_transfers_between_accounts() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        service
+            .init_player_account("steam:from", "0.00", "100.00")
+            .expect("from account should be created");
+
+        let (from, to) = service
+            .transfer_between_accounts("steam:from", "steam:to", Money::from_cents(2500))
+            .expect("transfer should succeed");
+
+        assert_eq!(from.account.balance.as_str(), "75.00");
+        assert_eq!(to.account.balance.as_str(), "25.00");
+    }
+
+    #[test]
+    fn prepare_deposits_combines_duplicate_recipients() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        service
+            .init_player_account("steam:local-dev", "0.00", "10.00")
+            .expect("account should be created");
+
+        let profiles = service
+            .prepare_deposits(&[
+                ("steam:local-dev".to_string(), Money::from_cents(2500)),
+                ("steam:local-dev".to_string(), Money::from_cents(1250)),
+            ])
+            .expect("deposits should prepare");
+
+        assert_eq!(profiles.len(), 1);
+        assert_eq!(profiles[0].account.balance, Money::from_cents(4750));
     }
 }

@@ -31,15 +31,12 @@ pub(crate) fn init_actor(snapshot_json: String) -> String {
     };
 
     match ACTOR_FEATURE.init_or_create(snapshot) {
-        Ok(actor) => match serde_json::to_string(&actor) {
-            Ok(json) => json,
-            Err(error) => {
-                log::error(format_args!(
-                    "failed to serialize actor init result: {error}"
-                ));
-                format!("Error: failed to serialize actor init result: {error}")
-            }
-        },
+        Ok(actor) => serde_json::to_string(&actor).unwrap_or_else(|error| {
+            log::error(format_args!(
+                "failed to serialize actor init result: {error}"
+            ));
+            format!("Error: failed to serialize actor init result: {error}")
+        }),
         Err(error) => {
             log::error(format_args!("failed to init actor: {error}"));
             format!("Error: {error}")
@@ -57,15 +54,12 @@ pub(crate) fn disconnect_actor(snapshot_json: String) -> String {
     };
 
     match ACTOR_FEATURE.disconnect(snapshot) {
-        Ok(actor) => match serde_json::to_string(&actor) {
-            Ok(json) => json,
-            Err(error) => {
-                log::error(format_args!(
-                    "failed to serialize actor disconnect result: {error}"
-                ));
-                format!("Error: failed to serialize actor disconnect result: {error}")
-            }
-        },
+        Ok(actor) => serde_json::to_string(&actor).unwrap_or_else(|error| {
+            log::error(format_args!(
+                "failed to serialize actor disconnect result: {error}"
+            ));
+            format!("Error: failed to serialize actor disconnect result: {error}")
+        }),
         Err(error) => {
             log::error(format_args!("failed to disconnect actor: {error}"));
             format!("Error: {error}")
@@ -85,13 +79,10 @@ pub(crate) fn disconnect_actor_uid(uid: String) -> String {
 
 pub(crate) fn get_actor(uid: String) -> String {
     match ACTOR_FEATURE.get(&uid) {
-        Ok(Some(actor)) => match serde_json::to_string(&actor) {
-            Ok(json) => json,
-            Err(error) => {
-                log::error(format_args!("failed to serialize actor: {error}"));
-                format!("Error: failed to serialize actor: {error}")
-            }
-        },
+        Ok(Some(actor)) => serde_json::to_string(&actor).unwrap_or_else(|error| {
+            log::error(format_args!("failed to serialize actor: {error}"));
+            format!("Error: failed to serialize actor: {error}")
+        }),
         Ok(None) => "null".to_string(),
         Err(error) => {
             log::error(format_args!("failed to get actor {uid}: {error}"));

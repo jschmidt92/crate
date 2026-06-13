@@ -1,10 +1,18 @@
-use crate::{RUNTIME, log};
+use crate::{features::refuel::FuelFeature, log};
 use arma_rs::{Context, ContextState, Group};
 use forge_lib::{
-    models::{FuelTransaction, FuelType},
-    services::bank,
+    models::FuelType,
+    services::{BankService, FuelService},
+    shared::ServiceError,
 };
 use std::{collections::HashMap, sync::RwLock};
+
+static FUEL_FEATURE: std::sync::LazyLock<FuelFeature<crate::persistence::CachedBankRepository>> =
+    std::sync::LazyLock::new(|| {
+        FuelFeature::new(FuelService::new(BankService::new(
+            crate::persistence::bank_repository(),
+        )))
+    });
 
 pub fn group() -> Group {
     Group::new()
@@ -12,6 +20,8 @@ pub fn group() -> Group {
         .command("tick", tick)
         .command("stopped", stopped)
         .command("price", price)
+        .command("quote", quote)
+        .command("complete", refuel_complete)
         .state(Fueling::default())
 }
 
@@ -121,42 +131,91 @@ fn stopped(ctx: Context, source: String, target: String) {
         session
     };
 
-    let price_per_liter = session.fuel_type.price_per_liter();
-    let transaction = FuelTransaction {
-        uid: session.uid,
-        plate: session.plate,
-        liters: session.amount,
-        fuel_type: session.fuel_type,
-        price_per_liter,
-    };
-    log::info(format_args!(
-        "Queued fuel bank transaction for uid {} vehicle {}: {:.2} liters of {}",
-        transaction.uid, transaction.plate, transaction.liters, transaction.fuel_type
-    ));
-    let _ = RUNTIME.spawn(async move {
-        match bank::process_fuel_transaction(transaction).await {
-            Ok(receipt) => {
-                log::info(format_args!(
-                    "Completed bank transaction for uid {}: {:.2} ({})",
-                    receipt.uid, receipt.amount, receipt.description
-                ));
-            }
-            Err(error) => {
-                log::error(format_args!(
-                    "Failed to process fuel bank transaction: {error}"
-                ));
-            }
+    match FUEL_FEATURE.complete(
+        &session.uid,
+        &session.plate,
+        session.amount,
+        session.fuel_type,
+    ) {
+        Ok(receipt) => {
+            log::info(format_args!(
+                "Completed refuel for uid {}: {} ({})",
+                receipt.uid,
+                receipt.amount.as_str(),
+                receipt.description
+            ));
         }
-    });
+        Err(error) => {
+            log::error(format_args!("Failed to complete refuel: {error}"));
+        }
+    }
 }
 
 fn price(fuel_type: String) -> f64 {
-    let price = FuelType::try_from(fuel_type.as_str())
-        .unwrap_or(FuelType::Regular)
-        .price_per_liter();
+    let price =
+        FUEL_FEATURE.price(FuelType::try_from(fuel_type.as_str()).unwrap_or(FuelType::Regular));
     log::info(format_args!(
         "Fuel price requested for {}: {:.2}",
         fuel_type, price
     ));
     price
+}
+
+pub(crate) fn quote(liters: String, fuel_type: String) -> String {
+    let Ok(liters) = parse_f64(&liters) else {
+        return format!("Error: {}", ServiceError::InvalidAmount);
+    };
+    let Ok(fuel_type) = parse_fuel_type(&fuel_type) else {
+        return format!("Error: {}", ServiceError::InvalidFuelType);
+    };
+
+    match FUEL_FEATURE.quote(liters, fuel_type) {
+        Ok(quote) => serialize_refuel(&quote, "refuel quote"),
+        Err(error) => {
+            log::error(format_args!("failed to quote refuel: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn refuel_complete(
+    uid: String,
+    plate: String,
+    liters: String,
+    fuel_type: String,
+) -> String {
+    let Ok(liters) = parse_f64(&liters) else {
+        return format!("Error: {}", ServiceError::InvalidAmount);
+    };
+    let Ok(fuel_type) = parse_fuel_type(&fuel_type) else {
+        return format!("Error: {}", ServiceError::InvalidFuelType);
+    };
+
+    match FUEL_FEATURE.complete(&uid, &plate, liters, fuel_type) {
+        Ok(receipt) => serialize_refuel(&receipt, "refuel receipt"),
+        Err(error) => {
+            log::error(format_args!("failed to complete refuel for {uid}: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+fn parse_f64(value: &str) -> Result<f64, ServiceError> {
+    value
+        .parse::<f64>()
+        .map_err(|_| ServiceError::InvalidAmount)
+}
+
+fn parse_fuel_type(value: &str) -> Result<FuelType, ServiceError> {
+    FuelType::try_from(value).map_err(|()| ServiceError::InvalidFuelType)
+}
+
+fn serialize_refuel<T>(value: &T, label: &str) -> String
+where
+    T: serde::Serialize,
+{
+    serde_json::to_string(value).unwrap_or_else(|error| {
+        log::error(format_args!("failed to serialize {label}: {error}"));
+        format!("Error: failed to serialize {label}: {error}")
+    })
 }

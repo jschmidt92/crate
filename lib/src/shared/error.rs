@@ -2,6 +2,7 @@
 pub enum BankError {
     InvalidAmount,
     InvalidActorUid,
+    InsufficientFunds,
     Repository(String),
 }
 
@@ -10,6 +11,7 @@ impl std::fmt::Display for BankError {
         match self {
             Self::InvalidAmount => f.write_str("invalid transaction amount"),
             Self::InvalidActorUid => f.write_str("invalid actor uid"),
+            Self::InsufficientFunds => f.write_str("bank account has insufficient funds"),
             Self::Repository(error) => write!(f, "bank repository error: {error}"),
         }
     }
@@ -20,6 +22,37 @@ impl std::error::Error for BankError {}
 impl From<String> for BankError {
     fn from(value: String) -> Self {
         Self::Repository(value)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ServiceError {
+    InvalidAmount,
+    InvalidDamage,
+    InvalidFuelType,
+    InvalidPlate,
+    InvalidUid,
+    Payment(BankError),
+}
+
+impl std::fmt::Display for ServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidAmount => f.write_str("invalid service amount"),
+            Self::InvalidDamage => f.write_str("invalid vehicle damage amount"),
+            Self::InvalidFuelType => f.write_str("invalid refuel type"),
+            Self::InvalidPlate => f.write_str("invalid vehicle plate"),
+            Self::InvalidUid => f.write_str("invalid service uid"),
+            Self::Payment(error) => write!(f, "service payment failed: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for ServiceError {}
+
+impl From<BankError> for ServiceError {
+    fn from(value: BankError) -> Self {
+        Self::Payment(value)
     }
 }
 
@@ -158,7 +191,7 @@ impl std::fmt::Display for GarageError {
             Self::InvalidUid => f.write_str("invalid garage uid"),
             Self::InvalidPlate => f.write_str("invalid vehicle plate"),
             Self::InvalidClassname => f.write_str("invalid vehicle classname"),
-            Self::InvalidFuel => f.write_str("invalid vehicle fuel"),
+            Self::InvalidFuel => f.write_str("invalid vehicle refuel"),
             Self::InvalidDamage => f.write_str("invalid vehicle damage"),
             Self::InvalidHitPoints => f.write_str("invalid vehicle hit points"),
             Self::Repository(error) => write!(f, "garage repository error: {error}"),

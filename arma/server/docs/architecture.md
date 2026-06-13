@@ -11,16 +11,18 @@ The server crate depends on `forge-lib`; `forge-lib` does not depend on the serv
 
 Most extension calls follow this path:
 
-```text
-Arma command
-  -> arma/server/src/command.rs or arma-rs group command
-  -> command module, such as organization.rs
-  -> feature workflow
-  -> forge-lib service
-  -> repository trait implementation
-  -> optional DomainEvent
-  -> central EventBus
-  -> durable persistence event handler
+```mermaid
+flowchart TD
+    Arma[Arma command] --> Route[command.rs or arma-rs group]
+    Route --> Command[command module]
+    Command --> Feature[feature workflow]
+    Feature --> Service[forge-lib service]
+    Service --> Repository[repository trait]
+    Feature --> Event{Domain event?}
+    Event -->|yes| Bus[central EventBus]
+    Bus --> Durable[DurableEventBackend]
+    Event -->|no| Done[return response]
+    Repository --> Done
 ```
 
 The command module should stay thin. It should parse command arguments, call the appropriate workflow, serialize the result, and log failures.
@@ -68,10 +70,13 @@ String route dispatcher used by the transport layer.
 
 Owns the server-level event bus:
 
-```text
-ServerEventPublisher
-  -> central EventBus
-  -> DurableEventBackend
+```mermaid
+flowchart LR
+    Publisher[ServerEventPublisher] --> Bus[EventBus]
+    Bus --> Durable[DurableEventBackend]
+    Durable --> EventRows[(domain_event rows)]
+    Durable --> AuditRows[(audit rows)]
+    Durable --> Notifications[(notification rows)]
 ```
 
 This is the application event backbone. Feature workflows publish events through `EventPublisher`, and handlers react through the central bus.
@@ -85,6 +90,30 @@ features/actor/
   init.rs
   lifecycle.rs
   query.rs
+```
+
+```text
+features/bank/
+  account.rs
+  lifecycle.rs
+```
+
+```text
+features/fuel/
+features/rearm/
+features/repair/
+features/medical/
+  mod.rs
+```
+
+```text
+features/garage/
+features/locker/
+features/v_garage/
+features/v_locker/
+  lifecycle.rs
+  query.rs
+  storage.rs
 ```
 
 ```text
@@ -116,8 +145,32 @@ Persistence-specific code:
 - Keep server workflow orchestration in feature modules.
 - Keep command modules thin.
 - Use repository traits in services instead of direct persistence calls.
+- Route player bank-account money movement through `BankService`.
+- For paid gameplay services, calculate service rules in the service module and charge through `BankService`.
 - Publish domain events through `EventPublisher`, not by directly calling persistence.
 - Put SurrealDB-specific logic under `arma/server/src/persistence`.
+
+## Paid Service Flow
+
+```mermaid
+sequenceDiagram
+    participant SQF as Arma/SQF
+    participant Cmd as Server command
+    participant Feature as Feature slice
+    participant Service as Service module
+    participant Bank as BankService
+    participant Repo as BankRepository
+
+    SQF->>Cmd: repair/rearm/refuel/heal request
+    Cmd->>Feature: parsed input
+    Feature->>Service: complete service
+    Service->>Service: validate and price
+    Service->>Bank: withdraw_from_account
+    Bank->>Repo: save updated bank profile
+    Service-->>Feature: ServiceReceipt
+    Feature-->>Cmd: ServiceReceipt
+    Cmd-->>SQF: JSON receipt or Error
+```
 
 ## Vertical Slice Direction
 

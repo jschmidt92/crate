@@ -8,6 +8,7 @@ pub mod locker;
 pub mod notification;
 pub mod organization;
 pub mod organization_event;
+pub mod service;
 pub mod transaction;
 pub mod v_garage;
 pub mod v_locker;
@@ -35,6 +36,7 @@ pub use organization_event::{
     OrganizationInviteCreated, OrganizationInviteDeclined, OrganizationMemberKicked,
     OrganizationMemberLeft, OrganizationPaydayIssued,
 };
+pub use service::{ServiceKind, ServiceQuote, ServiceReceipt};
 pub use transaction::{FuelTransaction, TransactionReceipt};
 pub use v_garage::{PlayerVGarage, VGarage, VehicleCategory};
 pub use v_locker::{EquipmentCategory, PlayerVLocker, VLocker};

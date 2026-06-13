@@ -1,10 +1,12 @@
-use crate::log;
+use crate::{features::locker::LockerFeature, log};
 use arma_rs::Group;
 use forge_lib::{models::PlayerLocker, services::LockerService};
 use std::sync::LazyLock;
 
-static LOCKER_SERVICE: LazyLock<LockerService<crate::persistence::CachedLockerRepository>> =
-    LazyLock::new(|| LockerService::new(crate::persistence::locker_repository()));
+static LOCKER_FEATURE: LazyLock<LockerFeature<crate::persistence::CachedLockerRepository>> =
+    LazyLock::new(|| {
+        LockerFeature::new(LockerService::new(crate::persistence::locker_repository()))
+    });
 
 pub fn group() -> Group {
     Group::new()
@@ -16,7 +18,7 @@ pub fn group() -> Group {
 }
 
 pub(crate) fn init_locker(uid: String) -> String {
-    match LOCKER_SERVICE.create_actor_locker(&uid) {
+    match LOCKER_FEATURE.init(&uid) {
         Ok(locker) => serialize_locker(&locker),
         Err(error) => {
             log::error(format_args!("failed to init locker {uid}: {error}"));
@@ -26,7 +28,7 @@ pub(crate) fn init_locker(uid: String) -> String {
 }
 
 pub(crate) fn disconnect_locker(uid: String) -> String {
-    match LOCKER_SERVICE.disconnect(&uid) {
+    match LOCKER_FEATURE.disconnect(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
             log::error(format_args!("failed to disconnect locker {uid}: {error}"));
@@ -36,7 +38,7 @@ pub(crate) fn disconnect_locker(uid: String) -> String {
 }
 
 pub(crate) fn get_locker(uid: String) -> String {
-    match LOCKER_SERVICE.get(&uid) {
+    match LOCKER_FEATURE.get(&uid) {
         Ok(Some(locker)) => serialize_locker(&locker),
         Ok(None) => "null".to_string(),
         Err(error) => {
@@ -55,7 +57,7 @@ pub(crate) fn save_locker(locker_json: String) -> String {
         }
     };
 
-    match LOCKER_SERVICE.save(locker) {
+    match LOCKER_FEATURE.save(locker) {
         Ok(locker) => serialize_locker(&locker),
         Err(error) => {
             log::error(format_args!("failed to save locker: {error}"));
@@ -65,7 +67,7 @@ pub(crate) fn save_locker(locker_json: String) -> String {
 }
 
 pub(crate) fn delete_locker(uid: String) -> String {
-    match LOCKER_SERVICE.delete(&uid) {
+    match LOCKER_FEATURE.delete(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
             log::error(format_args!("failed to delete locker {uid}: {error}"));
@@ -75,11 +77,8 @@ pub(crate) fn delete_locker(uid: String) -> String {
 }
 
 fn serialize_locker(locker: &PlayerLocker) -> String {
-    match serde_json::to_string(locker) {
-        Ok(json) => json,
-        Err(error) => {
-            log::error(format_args!("failed to serialize locker: {error}"));
-            format!("Error: failed to serialize locker: {error}")
-        }
-    }
+    serde_json::to_string(locker).unwrap_or_else(|error| {
+        log::error(format_args!("failed to serialize locker: {error}"));
+        format!("Error: failed to serialize locker: {error}")
+    })
 }

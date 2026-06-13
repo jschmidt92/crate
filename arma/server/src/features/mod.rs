@@ -1,2 +1,11 @@
 pub(crate) mod actor;
+pub(crate) mod bank;
+pub(crate) mod garage;
+pub(crate) mod locker;
+pub(crate) mod medical;
 pub(crate) mod organization;
+pub(crate) mod rearm;
+pub(crate) mod refuel;
+pub(crate) mod repair;
+pub(crate) mod v_garage;
+pub(crate) mod v_locker;

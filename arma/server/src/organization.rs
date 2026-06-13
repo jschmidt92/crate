@@ -223,13 +223,10 @@ pub(crate) fn issue_payday(
         }
     };
 
-    match serde_json::to_string(&payday) {
-        Ok(json) => json,
-        Err(error) => {
-            log::error(format_args!("failed to serialize payday result: {error}"));
-            format!("Error: failed to serialize payday result: {error}")
-        }
-    }
+    serde_json::to_string(&payday).unwrap_or_else(|error| {
+        log::error(format_args!("failed to serialize payday result: {error}"));
+        format!("Error: failed to serialize payday result: {error}")
+    })
 }
 
 fn parse_bool(value: &str) -> bool {
@@ -244,11 +241,8 @@ fn serialize<T>(value: &T, label: &str) -> String
 where
     T: serde::Serialize,
 {
-    match serde_json::to_string(value) {
-        Ok(json) => json,
-        Err(error) => {
-            log::error(format_args!("failed to serialize {label}: {error}"));
-            format!("Error: failed to serialize {label}: {error}")
-        }
-    }
+    serde_json::to_string(value).unwrap_or_else(|error| {
+        log::error(format_args!("failed to serialize {label}: {error}"));
+        format!("Error: failed to serialize {label}: {error}")
+    })
 }

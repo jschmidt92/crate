@@ -1,7 +1,7 @@
 use super::{BANK_REPOSITORY, ORGANIZATION_REPOSITORY, enqueue, model::WriteOp, upsert_op};
 use forge_lib::{
-    models::{OrganizationPayday, OrganizationPaydayPlan, OrganizationView, PlayerBankProfile},
-    repositories::BankRepository,
+    models::{OrganizationPayday, OrganizationPaydayPlan, OrganizationView},
+    services::BankService,
     shared::BankError,
 };
 
@@ -13,12 +13,14 @@ pub fn apply_payday_plan(plan: OrganizationPaydayPlan) -> Result<OrganizationPay
 
     ops.push(upsert_op("organization", &organization.id, &organization)?);
 
-    for recipient_uid in &plan.recipients {
-        let mut profile = BANK_REPOSITORY
-            .find_by_uid(recipient_uid)
-            .map_err(|error| BankError::Repository(error.to_string()))?
-            .unwrap_or_else(|| PlayerBankProfile::new(recipient_uid));
-        profile.account.deposit(plan.amount);
+    let bank_service = BankService::new(BANK_REPOSITORY.clone());
+    let deposits = plan
+        .recipients
+        .iter()
+        .map(|uid| (uid.clone(), plan.amount))
+        .collect::<Vec<_>>();
+
+    for profile in bank_service.prepare_deposits(&deposits)? {
         let profile = BANK_REPOSITORY.save_without_enqueue(profile)?;
         ops.push(upsert_op("bank", &profile.uid, &profile)?);
     }

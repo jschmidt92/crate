@@ -1,4 +1,4 @@
-use crate::log;
+use crate::{features::v_locker::VLockerFeature, log};
 use arma_rs::Group;
 use forge_lib::{
     models::{PlayerVLocker, VLocker},
@@ -6,8 +6,12 @@ use forge_lib::{
 };
 use std::sync::LazyLock;
 
-static V_LOCKER_SERVICE: LazyLock<VLockerService<crate::persistence::CachedVLockerRepository>> =
-    LazyLock::new(|| VLockerService::new(crate::persistence::v_locker_repository()));
+static V_LOCKER_FEATURE: LazyLock<VLockerFeature<crate::persistence::CachedVLockerRepository>> =
+    LazyLock::new(|| {
+        VLockerFeature::new(VLockerService::new(
+            crate::persistence::v_locker_repository(),
+        ))
+    });
 
 pub fn group() -> Group {
     Group::new()
@@ -29,7 +33,7 @@ pub(crate) fn init_locker(uid: String, unlocks_json: String) -> String {
         }
     };
 
-    match V_LOCKER_SERVICE.create_actor_locker(&uid, &unlocks) {
+    match V_LOCKER_FEATURE.init(&uid, &unlocks) {
         Ok(locker) => serialize_locker(&locker),
         Err(error) => {
             log::error(format_args!("failed to init virtual locker {uid}: {error}"));
@@ -39,7 +43,7 @@ pub(crate) fn init_locker(uid: String, unlocks_json: String) -> String {
 }
 
 pub(crate) fn disconnect_locker(uid: String) -> String {
-    match V_LOCKER_SERVICE.disconnect(&uid) {
+    match V_LOCKER_FEATURE.disconnect(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
             log::error(format_args!(
@@ -51,7 +55,7 @@ pub(crate) fn disconnect_locker(uid: String) -> String {
 }
 
 pub(crate) fn get_locker(uid: String) -> String {
-    match V_LOCKER_SERVICE.get(&uid) {
+    match V_LOCKER_FEATURE.get(&uid) {
         Ok(Some(locker)) => serialize_locker(&locker),
         Ok(None) => "null".to_string(),
         Err(error) => {
@@ -70,7 +74,7 @@ pub(crate) fn save_locker(locker_json: String) -> String {
         }
     };
 
-    match V_LOCKER_SERVICE.save(locker) {
+    match V_LOCKER_FEATURE.save(locker) {
         Ok(locker) => serialize_locker(&locker),
         Err(error) => {
             log::error(format_args!("failed to save virtual locker: {error}"));
@@ -80,7 +84,7 @@ pub(crate) fn save_locker(locker_json: String) -> String {
 }
 
 pub(crate) fn delete_locker(uid: String) -> String {
-    match V_LOCKER_SERVICE.delete(&uid) {
+    match V_LOCKER_FEATURE.delete(&uid) {
         Ok(()) => "OK".to_string(),
         Err(error) => {
             log::error(format_args!(
@@ -92,11 +96,8 @@ pub(crate) fn delete_locker(uid: String) -> String {
 }
 
 fn serialize_locker(locker: &PlayerVLocker) -> String {
-    match serde_json::to_string(locker) {
-        Ok(json) => json,
-        Err(error) => {
-            log::error(format_args!("failed to serialize virtual locker: {error}"));
-            format!("Error: failed to serialize virtual locker: {error}")
-        }
-    }
+    serde_json::to_string(locker).unwrap_or_else(|error| {
+        log::error(format_args!("failed to serialize virtual locker: {error}"));
+        format!("Error: failed to serialize virtual locker: {error}")
+    })
 }
