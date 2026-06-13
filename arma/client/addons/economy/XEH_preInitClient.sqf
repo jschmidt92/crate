@@ -40,4 +40,4 @@ if !(hasInterface) exitWith {};
             ]
         ]
     ];
-}] call CBA_fnc_addPerFrameHandler;
+}] call CFUNC(addEventHandler);

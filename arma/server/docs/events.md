@@ -85,6 +85,40 @@ Current helper functions:
 
 `notifyPlayer` fetches unread notifications for a player and sends them to that player with `systemChat`. The bank player-init flow calls it after bank initialization and marks displayed notifications read, so players do not see the same join-time notifications repeatedly. A later UI can replace `notifyPlayer` with a custom inbox while keeping the same Rust command surface.
 
+## Arma Extension Callbacks
+
+SQF extension callbacks are registered once in:
+
+```text
+arma/server/addons/main/XEH_preInitServer.sqf
+```
+
+The handler accepts Forge-owned callback namespaces:
+
+- `forge:<feature>` for new callback producers.
+
+The callback payload is parsed with `fromJSON` when it looks like a JSON object or array. The bridge then emits a server-local CBA event named:
+
+```text
+forge_server_<feature>_<callback>
+```
+
+For example, this extension callback:
+
+```text
+name = "forge:refuel"
+function = "price"
+data = "[...]"
+```
+
+becomes this SQF event:
+
+```text
+forge_server_refuel_price
+```
+
+Feature addons should subscribe to the routed CBA event in their own `XEH_preInitServer.sqf`. They should not add separate raw `ExtensionCallback` handlers unless a callback uses a different non-Forge protocol.
+
 ## Current Events
 
 Actor:

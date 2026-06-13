@@ -27,6 +27,19 @@ flowchart LR
 
 The command module should stay thin. It should parse command arguments, call the appropriate workflow, serialize the result, and log failures.
 
+Extension callbacks travel in the other direction, from Rust/native extension code back into SQF. The SQF side registers one raw `ExtensionCallback` bridge in `arma/server/addons/main/XEH_preInitServer.sqf`, then routes Forge callback namespaces to feature-owned CBA events:
+
+```mermaid
+flowchart LR
+    Extension[ExtensionCallback] --> Main[main callback bridge]
+    Main --> Parse[fromJSON payload]
+    Parse --> Event[CBA local event]
+    Event --> Feature[feature addon handler]
+    Feature --> Client[optional client event/UI]
+```
+
+Feature addons subscribe to events such as `forge_server_refuel_price` instead of adding their own raw `ExtensionCallback` handlers.
+
 ## Shared Library
 
 `lib/src/models`
