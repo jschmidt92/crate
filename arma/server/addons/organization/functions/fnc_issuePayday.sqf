@@ -31,7 +31,7 @@ params [
 if (_uid isEqualTo "") exitWith { createHashMap };
 if (_organization isEqualTo "") then { _organization = "default"; };
 if (_amount isEqualTo "") then {
-    _amount = [missionConfigFile >> "CfgForgeMission" >> "DefaultOrganization" >> "paydayAmount", "0.00"] call EFUNC(common,getConfigMoney);
+    _amount = [missionConfigFile >> "CfgMission" >> "DefaultOrganization" >> "paydayAmount", "0.00"] call EFUNC(common,getConfigMoney);
 };
 
 private _isDefaultCeoSlot = [_uid] call FUNC(isDefaultCeoSlot);

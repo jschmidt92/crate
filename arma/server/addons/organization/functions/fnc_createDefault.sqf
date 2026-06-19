@@ -20,7 +20,7 @@
  * [] call forge_server_organization_fnc_createDefault;
  */
 
-private _defaultConfig = missionConfigFile >> "CfgForgeMission" >> "DefaultOrganization";
+private _defaultConfig = missionConfigFile >> "CfgMission" >> "DefaultOrganization";
 private _startingBank = [_defaultConfig >> "startingBank", "0.00"] call EFUNC(common,getConfigMoney);
 
 private _garageConfig = _defaultConfig >> "VirtualGarage";

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Forge</title>
+        <script>
+            Promise.all([
+                A3API.RequestFile("forge\\forge_client\\addons\\webui\\ui\\_site\\style.css"),
+                A3API.RequestFile("forge\\forge_client\\addons\\webui\\ui\\_site\\script.js"),
+            ]).then(([css, js]) => {
+                const style = document.createElement("style");
+                style.textContent = css;
+                document.head.appendChild(style);
+
+                const script = document.createElement("script");
+                script.text = js;
+                document.head.appendChild(script);
+            }).catch((error) => {
+                document.body.textContent = "Forge WebUI failed to load packaged assets.";
+            });
+        </script>
+    </head>
+    <body>
+        <div id="app"></div>
+    </body>
+</html>

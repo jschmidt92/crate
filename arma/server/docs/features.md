@@ -101,7 +101,7 @@ Main files:
 - `arma/server/src/refuel.rs`
 - `arma/server/src/features/refuel/*`
 
-Refuel supports session-based refueling from Arma events and direct refuel completion commands. Completed refuels charge the player bank account through `BankService` and return a `ServiceReceipt`. Refuel prices are read from `CfgForgeMission >> Services >> Refuel`, with Rust defaults used by the domain service if a caller does not provide custom pricing.
+Refuel supports session-based refueling from Arma events and direct refuel completion commands. Completed refuels charge the player bank account through `BankService` and return a `ServiceReceipt`. Refuel prices are read from `CfgMission >> Services >> Refuel`, with Rust defaults used by the domain service if a caller does not provide custom pricing.
 
 ```mermaid
 flowchart TD
@@ -140,12 +140,12 @@ Repair, rearm, refuel, and medical services are service-style workflows. They va
 
 Mission-config pricing:
 
-- `CfgForgeMission >> Services >> Refuel >> regularPricePerLiter`
-- `CfgForgeMission >> Services >> Refuel >> jeta1PricePerLiter`
-- `CfgForgeMission >> Services >> Repair >> fullRepairPrice`
-- `CfgForgeMission >> Services >> Rearm >> unitPrice`
-- `CfgForgeMission >> Services >> Medical >> respawnPrice`
-- `CfgForgeMission >> Services >> Medical >> fullHealPrice`
+- `CfgMission >> Services >> Refuel >> regularPricePerLiter`
+- `CfgMission >> Services >> Refuel >> jeta1PricePerLiter`
+- `CfgMission >> Services >> Repair >> fullRepairPrice`
+- `CfgMission >> Services >> Rearm >> unitPrice`
+- `CfgMission >> Services >> Medical >> respawnPrice`
+- `CfgMission >> Services >> Medical >> fullHealPrice`
 
 If a configured value is `0.00`, the service completes without a bank withdrawal. Rust services keep internal defaults so direct callers still have a deterministic fallback.
 

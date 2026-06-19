@@ -24,7 +24,7 @@ params [["_uid", "", [""]]];
 
 if (_uid isEqualTo "") exitWith { createHashMap };
 
-private _actorConfig = missionConfigFile >> "CfgForgeMission" >> "Actor";
+private _actorConfig = missionConfigFile >> "CfgMission" >> "Actor";
 private _startingCash = [_actorConfig >> "startingCash", "0.00"] call EFUNC(common,getConfigMoney);
 private _startingBank = [_actorConfig >> "startingBank", "0.00"] call EFUNC(common,getConfigMoney);
 

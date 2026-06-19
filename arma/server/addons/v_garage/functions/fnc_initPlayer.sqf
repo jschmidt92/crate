@@ -23,7 +23,7 @@ params [["_uid", "", [""]]];
 
 if (_uid isEqualTo "") exitWith { createHashMap };
 
-private _garageConfig = missionConfigFile >> "CfgForgeMission" >> "Actor" >> "VirtualGarage";
+private _garageConfig = missionConfigFile >> "CfgMission" >> "Actor" >> "VirtualGarage";
 private _unlocks = createHashMapFromArray [
     ["cars", getArray (_garageConfig >> "cars")],
     ["armor", getArray (_garageConfig >> "armor")],

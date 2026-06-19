@@ -38,6 +38,7 @@ target/
 Cargo.lock
 
 # Misc
+arma/enemy_commander/
 build/
 dist/
 docus/.nuxt/

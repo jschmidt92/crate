@@ -23,7 +23,7 @@ params [["_uid", "", [""]]];
 
 if (_uid isEqualTo "") exitWith { createHashMap };
 
-private _lockerConfig = missionConfigFile >> "CfgForgeMission" >> "Actor" >> "Locker";
+private _lockerConfig = missionConfigFile >> "CfgMission" >> "Actor" >> "Locker";
 private _unlocks = createHashMapFromArray [
     ["items", getArray (_lockerConfig >> "items")],
     ["weapons", getArray (_lockerConfig >> "weapons")],

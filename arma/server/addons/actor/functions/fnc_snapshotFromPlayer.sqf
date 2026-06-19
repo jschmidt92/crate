@@ -24,7 +24,7 @@ params [["_player", objNull, [objNull]]];
 
 if (isNull _player) exitWith { createHashMap };
 
-private _actorConfig = missionConfigFile >> "CfgForgeMission" >> "Actor";
+private _actorConfig = missionConfigFile >> "CfgMission" >> "Actor";
 private _loadout = getUnitLoadout _player;
 private _configuredLoadout = getArray (_actorConfig >> "loadout");
 if (_configuredLoadout isNotEqualTo []) then {

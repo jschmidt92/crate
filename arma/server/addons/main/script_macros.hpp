@@ -11,6 +11,9 @@
 #define BFUNC(var1) TRIPLES(BIS,fnc,var1)
 #define CFUNC(var1) TRIPLES(CBA,fnc,var1)
 
+#define CLASS(var1) DOUBLES(PREFIX,var1)
+#define QCLASS(var1) QUOTE(DOUBLES(PREFIX,var1))
+
 // Remote Procedure Calls
 #define CRPC(var1,var2) QUOTE(DOUBLES(DOUBLES(forge_client,var1),var2))
 #define SRPC(var1,var2) QUOTE(DOUBLES(DOUBLES(forge_server,var1),var2))
