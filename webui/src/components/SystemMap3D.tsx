@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import * as THREE from "three";
 import { sendToArma } from "../bridge/host";
+import "./SystemMap3D.css";
 
 type ModuleNode = {
     id: string;

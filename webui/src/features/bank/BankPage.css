@@ -1,0 +1,896 @@
+/* ========================================================================== */
+/* #region 6. Player Banking - Portal Shell & Headers                         */
+/* ========================================================================== */
+.bank-loading-state {
+    min-height: 100%;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+
+    & .bank-loading-spinner {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 4px;
+        border: 2px solid rgba(var(--accent-rgb), 0.2);
+        border-top-color: var(--accent-color);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    & strong {
+        color: var(--text-primary);
+        font-size: 14px;
+    }
+
+    & > span:last-child {
+        color: var(--text-tertiary);
+        font-size: 12px;
+    }
+}
+
+.bank-page {
+    & .bank-hero {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 48px;
+        align-items: center;
+    }
+
+    & .page-header-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+    }
+
+    & .page-label-badge {
+        padding: 4px 10px;
+        border: 1px solid var(--border-color);
+        background: rgba(var(--accent-rgb), 0.08);
+        color: var(--accent-color);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        border-radius: 4px;
+        letter-spacing: 0.05em;
+    }
+
+    & .theme-toggle-btn-body {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border-radius: 6px;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s ease;
+
+        & svg {
+            display: block;
+        }
+
+        &:hover {
+            color: #e7bd64;
+            border-color: var(--border-color);
+            background: rgba(var(--accent-rgb), 0.05);
+        }
+    }
+
+    & .refresh-btn {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+            color: var(--accent-color);
+            border-color: var(--border-color);
+            background: rgba(var(--accent-rgb), 0.05);
+        }
+
+        &.spinning svg {
+            animation: spin 1s linear infinite;
+        }
+    }
+
+    & .page-desc {
+        margin: 12px 0 24px;
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.5;
+    }
+
+    & .card-container-wrapper {
+        margin-top: 24px;
+    }
+/* #endregion */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* #region 7. Player Banking - Platinum Digital Card                          */
+/* ========================================================================== */
+    /* Digital Bank Card (Platinum Style) */
+    & .digital-card {
+        position: relative;
+        width: 100%;
+        max-width: 360px;
+        height: 210px;
+        padding: 22px;
+        border-radius: 16px;
+        border: 1px solid rgba(var(--accent-rgb), 0.28);
+        background: linear-gradient(135deg, rgba(28, 28, 35, 0.95) 0%, rgba(14, 14, 18, 0.95) 100%);
+        box-shadow: 
+            0 12px 28px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        cursor: pointer;
+
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 10% 20%, rgba(var(--accent-rgb), 0.12) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        &:hover {
+            transform: translateY(-5px) scale(1.01) rotate(0.5deg);
+            box-shadow: 
+                0 20px 38px rgba(0, 0, 0, 0.5),
+                0 0 15px rgba(var(--accent-rgb), 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            border-color: rgba(var(--accent-rgb), 0.45);
+        }
+
+        & .card-glass-glow {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 45%, rgba(255, 255, 255, 0.04) 50%, transparent 55%);
+            transform: rotate(-15deg);
+            pointer-events: none;
+            transition: transform 0.6s ease;
+        }
+
+        &:hover .card-glass-glow {
+            transform: rotate(-15deg) translate(30%, 30%);
+        }
+
+        & .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        & .card-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        & .card-logo-mark {
+            width: 22px;
+            height: 22px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--accent-color);
+            background: rgba(var(--accent-rgb), 0.25);
+            color: var(--accent-color);
+            font-size: 11px;
+            font-weight: 900;
+            border-radius: 4px;
+        }
+
+        & .card-brand-name {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.15em;
+            color: #ffffff;
+        }
+
+        & .card-type-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            background: rgba(var(--accent-rgb), 0.15);
+            border: 1px solid rgba(var(--accent-rgb), 0.35);
+            color: var(--accent-color);
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        & .card-chip-contactless {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 12px 0 4px;
+        }
+
+        & .card-chip {
+            position: relative;
+            width: 32px;
+            height: 24px;
+            background: linear-gradient(135deg, #d4af37 0%, #aa7c11 100%);
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+            &::before {
+                content: '';
+                position: absolute;
+                inset: 3px;
+                border: 1px solid rgba(0, 0, 0, 0.15);
+                border-radius: 2px;
+            }
+
+            & .chip-line {
+                position: absolute;
+                background: rgba(0, 0, 0, 0.2);
+
+                &.horizontal {
+                    top: 11px;
+                    left: 0;
+                    width: 100%;
+                    height: 1px;
+                }
+
+                &.vertical {
+                    left: 15px;
+                    top: 0;
+                    width: 1px;
+                    height: 100%;
+                }
+            }
+        }
+
+        & .card-contactless {
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        & .card-number {
+            font-family: monospace, Courier, sans-serif;
+            font-size: 17px;
+            letter-spacing: 0.2em;
+            color: #ffffff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+            margin: 10px 0;
+        }
+
+        & .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        & .card-holder,
+        & .card-expiry {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        & .card-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: var(--text-tertiary);
+            letter-spacing: 0.1em;
+        }
+
+        & .card-value {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.02em;
+        }
+    }
+
+    /* Light Theme adjustment for card background style */
+    :root[data-theme="light"] & .digital-card {
+        border-color: rgba(148, 163, 184, 0.45);
+        background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+        box-shadow: 
+            0 12px 28px rgba(15, 23, 42, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+        & .card-brand-name,
+        & .card-number,
+        & .card-value {
+            color: #0f172a;
+            text-shadow: none;
+        }
+
+        & .card-label {
+            color: #64748b;
+        }
+
+        & .card-contactless {
+            color: #64748b;
+        }
+
+        & .card-type-badge {
+            background: rgba(148, 163, 184, 0.12);
+            border-color: rgba(148, 163, 184, 0.35);
+            color: #475569;
+        }
+    }
+/* #endregion */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* #region 8. Player Banking - Balance & Summary Cards                        */
+/* ========================================================================== */
+    /* Bank Summary (Balance Cards) */
+    & .bank-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        justify-content: center;
+    }
+
+    & .balance-card {
+        min-height: 82px;
+        padding: 16px 20px;
+        border-radius: 12px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-secondary);
+        box-shadow: var(--card-shadow);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 6px;
+        transition: all 0.2s ease;
+
+        &.featured {
+            border-color: var(--border-color);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(var(--accent-rgb), 0.06) 100%);
+            box-shadow: 
+                0 8px 24px rgba(var(--accent-rgb), 0.06),
+                var(--card-shadow);
+        }
+
+        &:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-color);
+            box-shadow: 
+                0 8px 20px rgba(0, 0, 0, 0.15),
+                var(--card-shadow);
+        }
+
+        & .balance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        & span {
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        & .balance-icon {
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+        }
+
+        &.featured .balance-icon {
+            color: var(--accent-color);
+        }
+
+        & strong {
+            color: var(--text-primary);
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1;
+            font-feature-settings: "tnum";
+        }
+    }
+/* #endregion */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* #region 9. Player Banking - Workspace Layout & Form Panels                 */
+/* ========================================================================== */
+    /* Workspace */
+    & .bank-workspace {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        align-items: stretch;
+    }
+
+    & .ledger-panel {
+        grid-column: 1 / -1;
+    }
+
+    & .bank-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 24px;
+        border-radius: 12px;
+        border: 1px solid var(--border-subtle);
+        background: var(--card-bg);
+        box-shadow: var(--card-shadow);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        transition: border-color 0.3s ease, background-color 0.3s ease;
+
+        &:hover {
+            border-color: rgba(var(--accent-rgb), 0.25);
+        }
+    }
+
+    & .panel-heading {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-bottom: 1px solid var(--border-subtle);
+        padding-bottom: 12px;
+    }
+
+    & .panel-heading-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        & span:not(.panel-heading-icon) {
+            color: var(--text-tertiary);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        & .panel-heading-icon {
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+        }
+    }
+
+    & .panel-heading strong {
+        color: var(--text-primary);
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    /* Form Fields & Presets */
+    & .field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    & .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+
+        & span {
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+    }
+
+    & .input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+
+        & input {
+            height: 42px;
+            width: 100%;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font: inherit;
+            font-size: 15px;
+            padding: 0 14px;
+            outline: none;
+            transition: all 0.2s ease;
+
+            &::placeholder {
+                color: var(--text-tertiary);
+            }
+
+            &:focus {
+                border-color: var(--accent-color);
+                box-shadow: 0 0 0 3px var(--input-focus);
+            }
+        }
+    }
+
+    & .currency-input {
+        & .currency-prefix {
+            position: absolute;
+            left: 14px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        & input {
+            padding-left: 28px;
+        }
+    }
+
+    /* Preset Chips */
+    & .presets-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    & .preset-chip {
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover {
+            color: var(--text-primary);
+            border-color: var(--border-color);
+            background: rgba(var(--accent-rgb), 0.08);
+        }
+
+        &.max-chip {
+            background: rgba(var(--accent-rgb), 0.05);
+            color: var(--accent-color);
+            border-color: rgba(var(--accent-rgb), 0.15);
+
+            &:hover {
+                background: rgba(var(--accent-rgb), 0.12);
+                border-color: var(--accent-color);
+            }
+        }
+    }
+
+    /* Actions and Buttons */
+    & .movement-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    & .split-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    & .primary-action,
+    & .secondary-action {
+        height: 42px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+    }
+
+    & .primary-action {
+        border: 0;
+        background: var(--accent-color);
+        color: var(--bg-primary);
+
+        &:hover:not(:disabled) {
+            background: var(--accent-hover);
+            box-shadow: 0 4px 12px var(--glow-color);
+        }
+    }
+
+    & .secondary-action {
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+
+        &:hover:not(:disabled) {
+            background: var(--border-subtle);
+            border-color: var(--border-color);
+        }
+    }
+
+    & .submit-earnings-action {
+        width: 100%;
+        border-color: rgba(var(--accent-rgb), 0.2);
+        background: rgba(var(--accent-rgb), 0.04);
+        color: var(--accent-color);
+
+        &:hover:not(:disabled) {
+            background: rgba(var(--accent-rgb), 0.1);
+            border-color: var(--accent-color);
+        }
+    }
+
+    & .transfer-submit,
+    & .pin-submit {
+        width: 100%;
+    }
+
+    /* Snapshot Grid (Org Panel) */
+    & .snapshot-grid {
+        display: grid;
+        gap: 12px;
+    }
+
+    & .snapshot-item {
+        min-height: 60px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 6px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-secondary);
+        transition: all 0.2s ease;
+
+        &.featured {
+            border-color: var(--border-color);
+            background: rgba(var(--accent-rgb), 0.04);
+        }
+
+        & span {
+            color: var(--text-tertiary);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        & strong {
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        &.featured strong {
+            color: var(--accent-color);
+            font-size: 17px;
+            font-weight: 800;
+        }
+    }
+
+    /* PIN Panel Fields */
+    & .pin-fields-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+/* #endregion */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* #region 10. Player Banking - Transaction Ledger List                      */
+/* ========================================================================== */
+    /* Ledger Panel / Transaction Lists */
+    & .transaction-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    & .transaction-row {
+        min-height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 18px;
+        border-radius: 8px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-secondary);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.01);
+        transition: all 0.15s ease;
+
+        &:hover {
+            border-color: var(--border-color);
+            transform: translateX(3px);
+            background: var(--bg-tertiary);
+        }
+
+        & .tx-details {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+
+            & div {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+        }
+
+        & .tx-icon {
+            width: 24px;
+            height: 24px;
+            display: grid;
+            place-items: center;
+            flex: 0 0 24px;
+            font-weight: 800;
+            font-size: 17px;
+
+            &.in {
+                color: var(--success-color);
+            }
+
+            &.out {
+                color: var(--danger-color);
+            }
+        }
+
+        & strong {
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        & span {
+            color: var(--text-tertiary);
+            font-size: 11px;
+        }
+
+        & b {
+            font-size: 14px;
+            font-weight: 700;
+            white-space: nowrap;
+            font-feature-settings: "tnum";
+
+            &.in {
+                color: var(--success-color);
+            }
+
+            &.out {
+                color: var(--danger-color);
+            }
+        }
+    }
+
+    & .empty-ledger {
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        border: 1.5px dashed var(--border-subtle);
+        border-radius: 8px;
+        color: var(--text-tertiary);
+        padding: 24px;
+
+        & span {
+            font-size: 14px;
+            font-weight: 600;
+        }
+    }
+/* #endregion */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* #region 11. Player Banking - Status & Loading Banners                      */
+/* ========================================================================== */
+    /* Status and Information Banners */
+    & .error-banner,
+    & .loading-banner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        line-height: 1.4;
+    }
+
+    & .error-banner {
+        background: var(--danger-bg);
+        border: 1px solid var(--danger-color);
+        color: var(--danger-color);
+    }
+
+    & .loading-banner {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-secondary);
+    }
+
+    & .spinner-mini {
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--border-subtle);
+        border-top-color: var(--accent-color);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+/* #endregion */
+/* ========================================================================== */
+}
+
+/* ========================================================================== */
+/* #region 12. Utilities & Responsive Overrides (Bank Page)                 */
+/* ========================================================================== */
+/* Responsive Overrides */
+@media (max-width: 860px) {
+    .bank-page .bank-hero {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .bank-page .bank-summary {
+        flex-direction: row;
+        flex-wrap: wrap;
+
+        &>* {
+            flex: 1 1 200px;
+        }
+    }
+}
+
+@media (max-width: 760px) {
+    .bank-page .bank-hero,
+    .bank-page .bank-workspace {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .bank-page .bank-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .bank-page .money-panel,
+    .bank-page .org-panel,
+    .bank-page .transfer-panel,
+    .bank-page .pin-panel,
+    .bank-page .return-panel,
+    .bank-page .ledger-panel {
+        grid-column: auto;
+        grid-row: auto;
+    }
+}
+/* #endregion */
+/* ========================================================================== */

@@ -32,6 +32,22 @@ const indexHtml = `<!doctype html>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Forge</title>
+        <style>
+            html, body, #app { width: 100%; height: 100%; margin: 0; }
+            body { background: #09090b; color: #d6a84f; font-family: Arial, sans-serif; }
+            .forge-boot-loader { height: 100%; display: grid; place-items: center; }
+            .forge-boot-loader div { display: grid; justify-items: center; gap: 14px; }
+            .forge-boot-spinner {
+                width: 28px;
+                height: 28px;
+                border: 2px solid rgba(214, 168, 79, 0.2);
+                border-top-color: #d6a84f;
+                border-radius: 50%;
+                animation: forge-boot-spin 0.8s linear infinite;
+            }
+            .forge-boot-loader span { font-size: 12px; font-weight: 700; text-transform: uppercase; }
+            @keyframes forge-boot-spin { to { transform: rotate(360deg); } }
+        </style>
         <script>
             Promise.all([
                 A3API.RequestFile("forge\\\\forge_crate\\\\addons\\\\webui\\\\ui\\\\_site\\\\style.css"),
@@ -50,7 +66,11 @@ const indexHtml = `<!doctype html>
         </script>
     </head>
     <body>
-        <div id="app"></div>
+        <div id="app">
+            <div class="forge-boot-loader" role="status">
+                <div><span class="forge-boot-spinner"></span><span>Loading Forge Bank</span></div>
+            </div>
+        </div>
     </body>
 </html>
 `;

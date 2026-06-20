@@ -1,0 +1,110 @@
+/* ========================================================================== */
+/* #region 5. Interactive System Map Component                                */
+/* ========================================================================== */
+.system-map {
+    position: relative;
+    min-height: 420px;
+    overflow: hidden;
+
+    &.system-map-3d {
+        min-height: 480px;
+    }
+
+    &.system-map-fallback {
+        min-height: 420px;
+    }
+
+    & .system-map-stage {
+        position: absolute;
+        inset: 0;
+    }
+
+    & .system-map-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    & .system-map-readout {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        min-width: 132px;
+        display: grid;
+        gap: 5px;
+        padding: 12px;
+        border: 1px solid rgba(244, 244, 245, 0.14);
+        background: rgba(9, 9, 11, 0.82);
+        pointer-events: none;
+
+        & span {
+            color: #a1a1aa;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        & strong {
+            color: #ffffff;
+            font-size: 16px;
+        }
+    }
+
+    & .system-map-fallback-node {
+        position: absolute;
+        width: 104px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(244, 244, 245, 0.18);
+        background: #18181b;
+        color: #e4e4e7;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+
+        &:hover,
+        &.active {
+            border-color: rgba(214, 168, 79, 0.62);
+        }
+
+        &.core {
+            inset: calc(50% - 34px) auto auto calc(50% - 52px);
+            height: 68px;
+            background: #d6a84f;
+            color: #14110a;
+        }
+
+        &:nth-child(2) {
+            inset: 54px auto auto 48px;
+        }
+
+        &:nth-child(3) {
+            inset: 56px 54px auto auto;
+        }
+
+        &:nth-child(4) {
+            inset: auto auto 64px 44px;
+        }
+
+        &:nth-child(5) {
+            inset: auto 48px 64px auto;
+        }
+
+        &:nth-child(6) {
+            inset: auto auto 26px calc(50% - 52px);
+        }
+    }
+}
+
+/* Responsive Overrides */
+@media (max-width: 760px) {
+    .system-map {
+        min-height: 340px;
+    }
+}
+/* #endregion */
+/* ========================================================================== */

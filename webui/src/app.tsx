@@ -1,127 +1,80 @@
-import type { RefObject } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { Maximize2, Minus, X } from "lucide-preact";
 import { sendToArma } from "./bridge/host";
-import { SystemMap3D } from "./components/SystemMap3D";
 import { BankPage } from "./features/bank/BankPage";
 
-type Page = "landing" | "about" | "bank";
-type Section = "landing" | "map";
+type Theme = "dark" | "light";
 
 export function App() {
-    const [currentPage, setCurrentPage] = useState<Page>("landing");
-    const [activeSection, setActiveSection] = useState<Section>("landing");
     const [showScrollTop, setShowScrollTop] = useState(false);
-
-    const landingRef = useRef<HTMLElement>(null);
-    const mapRef = useRef<HTMLElement>(null);
-
-    const openPage = (page: Page) => {
-        setCurrentPage(page);
-        setActiveSection("landing");
-
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-    };
-
-    const scrollToSection = (section: Section) => {
-        setCurrentPage("landing");
-        setActiveSection(section);
-
-        requestAnimationFrame(() => {
-            const target = {
-                landing: landingRef.current,
-                map: mapRef.current
-            }[section];
-
-            target?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-    };
+    const [theme, setTheme] = useState<Theme>(readStoredTheme);
+    const mainViewRef = useRef<HTMLElement>(null);
 
     const scrollToTop = () => {
-        window.scrollTo({
+        mainViewRef.current?.scrollTo({
             top: 0,
             behavior: "smooth"
         });
-    };
-
-    const openModule = (moduleId: string) => {
-        if (moduleId === "bank") {
-            openPage("bank");
-            return;
-        }
-
-        sendToArma("ui::module_open_requested", { module: moduleId });
     };
 
     useEffect(() => {
+        document.documentElement.setAttribute("data-theme", theme);
+        storeTheme(theme);
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+    };
+
+    useEffect(() => {
+        const mainView = mainViewRef.current;
+        if (!mainView) {
+            return;
+        }
+
         const updateScrollTopVisibility = () => {
-            setShowScrollTop(window.scrollY > 120);
+            setShowScrollTop(mainView.scrollTop > 120);
         };
 
         updateScrollTopVisibility();
-        window.addEventListener("scroll", updateScrollTopVisibility, { passive: true });
+        mainView.addEventListener("scroll", updateScrollTopVisibility, { passive: true });
 
         return () => {
-            window.removeEventListener("scroll", updateScrollTopVisibility);
+            mainView.removeEventListener("scroll", updateScrollTopVisibility);
         };
     }, []);
 
     return (
         <div className="app-shell">
             <header className="topbar">
-                <button
-                    className="brand"
-                    type="button"
-                    aria-label="Forge landing page"
-                    onClick={() => openPage("landing")}
-                >
+                <div className="window-title">
                     <span className="brand-mark" aria-hidden="true">
                         F
                     </span>
-                    <span>Forge</span>
-                </button>
+                    <span>FORGE Bank</span>
+                </div>
 
-                <nav className="nav" aria-label="Primary">
-                    <button
-                        className={currentPage === "landing" ? "active" : ""}
-                        type="button"
-                        onClick={() => openPage("landing")}
-                    >
-                        Landing
+                <div className="window-controls" aria-label="Window controls">
+                    <button type="button" aria-label="Minimize" title="Minimize unavailable" disabled>
+                        <Minus size={17} strokeWidth={1.8} aria-hidden="true" />
                     </button>
-
-                    <button
-                        className={currentPage === "about" ? "active" : ""}
-                        type="button"
-                        onClick={() => openPage("about")}
-                    >
-                        About
+                    <button type="button" aria-label="Maximize" title="Maximize unavailable" disabled>
+                        <Maximize2 size={15} strokeWidth={1.8} aria-hidden="true" />
                     </button>
-
                     <button
-                        className={currentPage === "bank" ? "active" : ""}
+                        className="close-control"
                         type="button"
-                        onClick={() => openPage("bank")}
+                        aria-label="Close"
+                        title="Close"
+                        onClick={() => sendToArma("ui::close")}
                     >
-                        Bank
+                        <X size={18} strokeWidth={1.8} aria-hidden="true" />
                     </button>
-                </nav>
+                </div>
             </header>
 
-            <main className="main-view" aria-labelledby="page-title">
-                {currentPage === "landing" && (
-                    <LandingPage
-                        landingRef={landingRef}
-                        mapRef={mapRef}
-                        onOpenModule={openModule}
-                        onScrollToSection={scrollToSection}
-                    />
-                )}
-
-                {currentPage === "about" && <AboutPage />}
-                {currentPage === "bank" && <BankPage />}
+            <main ref={mainViewRef} className="main-view" aria-labelledby="page-title">
+                <BankPage theme={theme} toggleTheme={toggleTheme} />
             </main>
 
             {showScrollTop && (
@@ -147,92 +100,19 @@ export function App() {
     );
 }
 
-function LandingPage({
-    landingRef,
-    mapRef,
-    onOpenModule,
-    onScrollToSection
-}: {
-    landingRef: RefObject<HTMLElement>;
-    mapRef: RefObject<HTMLElement>;
-    onOpenModule: (moduleId: string) => void;
-    onScrollToSection: (section: Section) => void;
-}) {
-    return (
-        <div className="content-stack">
-            <section ref={landingRef} className="page-section hero-section">
-                <div className="section-copy">
-                    <div className="page-label">Landing</div>
-                    <h1 id="page-title">Forge Operations</h1>
-                    <p>
-                        A focused command surface for player economy, organizations, storage,
-                        services, and notifications.
-                    </p>
-                    <div className="actions">
-                        <button
-                            className="secondary-action"
-                            type="button"
-                            onClick={() => onScrollToSection("map")}
-                        >
-                            Jump to Map Section
-                        </button>
-
-                        <button
-                            className="secondary-action"
-                            type="button"
-                            onClick={() => sendToArma("ui::ping", { source: "landing" })}
-                        >
-                            Ping Arma
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <section ref={mapRef} className="page-section module-section" aria-labelledby="map-title">
-                <div className="section-copy">
-                    <div className="page-label">Map</div>
-                    <h2 id="map-title">Feature Surface</h2>
-                    <p>
-                        Drag to rotate, scroll to zoom, and select a module to send a UI event back
-                        through the Arma bridge.
-                    </p>
-                </div>
-                <div className="module-panel">
-                    <SystemMap3D onOpenModule={onOpenModule} />
-                </div>
-            </section>
-        </div>
-    );
+function readStoredTheme(): Theme {
+    try {
+        const stored = window.localStorage.getItem("theme");
+        return stored === "light" || stored === "dark" ? stored : "dark";
+    } catch {
+        return "dark";
+    }
 }
 
-function AboutPage() {
-    return (
-        <div className="content-stack">
-            <section className="page-section about-layout" aria-labelledby="about-title">
-                <div className="section-copy">
-                    <div className="page-label">About</div>
-                    <h1 id="page-title">About Forge</h1>
-                    <p>
-                        Forge is the mission framework layer that keeps persistent gameplay state,
-                        feature workflows, and in-game interfaces moving through one consistent path.
-                    </p>
-                </div>
-
-                <div className="info-list">
-                    <div>
-                        <span>UI runtime</span>
-                        <strong>Preact</strong>
-                    </div>
-                    <div>
-                        <span>Navigation</span>
-                        <strong>In-memory pages + sections</strong>
-                    </div>
-                    <div>
-                        <span>Target</span>
-                        <strong>CT_WEBBROWSER</strong>
-                    </div>
-                </div>
-            </section>
-        </div>
-    );
+function storeTheme(theme: Theme) {
+    try {
+        window.localStorage.setItem("theme", theme);
+    } catch {
+        // Arma's opaque WebBrowser origin does not expose persistent storage.
+    }
 }
