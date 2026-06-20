@@ -326,39 +326,138 @@ Listen to `"forge_crate_market_marketRequest"` (resolved from the `marketRequest
 
 ---
 
-## 6. Architectural Best Practices: Where to Put Domain Logic
+## 6. Decoupling Features via Event Choreography (Event-Driven Architecture)
 
-You are completely correct to ask about keeping domain logic in its proper place. In the Forge framework, developers have two patterns to choose from when implementing a custom feature:
+If a developer wants a clean Separation of Concerns, the **Market** feature should remain completely decoupled from the **Bank** feature. The Market should not make direct method or extension calls to banking functions, and the Bank should not know about inventory items, shop positions, or store configurations.
 
-### Pattern A: Rust-Authoritative (Recommended)
-To keep domain-specific logic completely self-contained and ensure database transactional safety (preventing exploits/dupes), the business rules should reside in the **Rust Extension** (`forge-lib` and `forge-crate`).
+Instead of direct coupling, we utilize the **CBA Event Bus** to orchestrate the transaction:
 
-1. **SQF Layer (Transport Only)**: Intercepts the player's UI request, packages it, and immediately forwards it to the native extension:
-   ```sqf
-   private _result = ["market:buy", [_uid, _itemId, _price]] call EFUNC(extension,call);
-   ```
-2. **Rust Domain Layer**: The native Rust `market` feature slice validates the transaction (checking configuration price lists, limits, or player database state).
-3. **Cross-Domain Interaction**: Inside Rust, the market service calls `BankService::withdraw_from_account` directly. This debit operation and the database updates are queued/batched in a single secure operation, ensuring **atomicity** (the player cannot get the item if the bank database update fails).
-4. **Domain Event Bus**: The native Rust `EventBus` registers the successful sale, publishing a `market.item_purchased` event which writes audit logs and notification rows in SurrealDB.
+### The Choreography Pattern Flow
 
-> [!TIP]
-> This pattern is highly recommended for complex, server-authoritative components (like persistent garages or virtual lockboxes) to guarantee that item delivery and payment remain transactional and cheat-proof.
+```mermaid
+sequenceDiagram
+    participant UI as Web UI
+    participant M as Market Addon
+    participant B as Bank Addon
+    
+    UI->>M: Action: market::buy
+    M->>M: Validate inventory & stock
+    Note over M,B: Decoupled Event Boundary
+    M->>B: Emit: forge_crate_bank_deductRequested
+    B->>B: Validate & deduct balance (Rust)
+    B->>M: Emit: forge_crate_bank_deductSucceeded / failed
+    Note over M,B: Decoupled Event Boundary
+    alt payment succeeded
+        M->>M: Add item to player unit
+        M-->>UI: Return: Purchase success!
+    else payment failed
+        M-->>UI: Return: Purchase failed error
+    end
+```
 
-### Pattern B: SQF-Delegated (For Scripting-Only Addons)
-If you want to build a lightweight addon using SQF scripts without compiling or modifying the Rust extension, you can handle the gameplay validation in SQF and call the banking commands as a service:
+### Implementing Decoupled Features in SQF
 
-1. **SQF Domain Validation**: Your script handles shop checks (e.g., checking if the player is near a physical shop object, checking vehicle slots, or checking physical inventory space).
-2. **Deducting Funds**: You call the native bank command to withdraw the money:
-   ```sqf
-   (["bank:withdraw", [_uid, _price]] call EFUNC(extension,call)) params ["_result", "_success"];
-   ```
-3. **State Sync**: If the extension returns `_success`, you spawn/give the item to the player.
+#### 1. The Market Module (Verifies rules, requests payment, fulfills purchase)
+The market addon listens for client UI requests, performs physical game-world validation, raises a payment request event, and listens for the final settlement:
+
+```sqf
+// Market Addon Server Handler:
+["forge_crate_market_marketRequest", {
+    params ["_player", "_requestId", "_event", "_data"];
+
+    if (_event isEqualTo "market::buy") then {
+        private _itemId = _data getOrDefault ["itemId", ""];
+        private _price = _data getOrDefault ["price", 99999];
+
+        // 1. Validate gameplay logic locally (e.g., inventory space or stock limits)
+        private _hasSpace = [_player, _itemId] call my_mod_fnc_checkInventorySpace;
+        if (!_hasSpace) exitWith {
+            private _errorResponse = createHashMapFromArray [
+                ["requestId", _requestId], ["event", _event], ["ok", false], ["data", createHashMap],
+                ["error", "Your inventory does not have enough space."]
+            ];
+            ["forge_crate_webui_bankResponse", [_errorResponse], _player] call CBA_fnc_targetEvent;
+        };
+
+        // 2. Request money deduction via the event bus (Market doesn't care how bank stores or processes it)
+        private _txPayload = createHashMapFromArray [
+            ["player", _player],
+            ["requestId", _requestId],
+            ["uiEvent", _event],
+            ["amount", _price]
+        ];
+        ["forge_crate_bank_deductRequested", _txPayload] call CBA_fnc_localEvent;
+    };
+}] call CBA_fnc_addEventHandler;
+
+// Market Addon listener for payment success:
+["forge_crate_bank_deductSucceeded", {
+    params ["_txPayload"];
+    private _player = _txPayload getOrDefault ["player", objNull];
+    private _requestId = _txPayload getOrDefault ["requestId", ""];
+    private _uiEvent = _txPayload getOrDefault ["uiEvent", ""];
+    
+    // Check if this was a market purchase transaction
+    if (_uiEvent isEqualTo "market::buy") then {
+        // Fulfill the transaction: give player the item
+        [_player] call my_mod_fnc_givePurchasedItem;
+
+        // Respond to the UI
+        private _response = createHashMapFromArray [
+            ["requestId", _requestId], ["event", _uiEvent], ["ok", true], ["data", createHashMap], ["error", ""]
+        ];
+        ["forge_crate_webui_bankResponse", [_response], _player] call CBA_fnc_targetEvent;
+    };
+}] call CBA_fnc_addEventHandler;
+
+// Market Addon listener for payment failure:
+["forge_crate_bank_deductFailed", {
+    params ["_txPayload"];
+    private _player = _txPayload getOrDefault ["player", objNull];
+    private _requestId = _txPayload getOrDefault ["requestId", ""];
+    private _uiEvent = _txPayload getOrDefault ["uiEvent", ""];
+    private _errorMsg = _txPayload getOrDefault ["error", "Payment failed."];
+
+    if (_uiEvent isEqualTo "market::buy") then {
+        private _response = createHashMapFromArray [
+            ["requestId", _requestId], ["event", _uiEvent], ["ok", false], ["data", createHashMap], ["error", _errorMsg]
+        ];
+        ["forge_crate_webui_bankResponse", [_response], _player] call CBA_fnc_targetEvent;
+    };
+}] call CBA_fnc_addEventHandler;
+```
+
+#### 2. The Bank Module (Verifies balance, deducts account, reports status)
+The bank addon does not know about weapons, markets, or shops. It only listens for `forge_crate_bank_deductRequested` payloads, calls Rust to process withdrawals, and reports success or failure:
+
+```sqf
+// Bank Addon Server Listener:
+["forge_crate_bank_deductRequested", {
+    params ["_txPayload"];
+    private _player = _txPayload getOrDefault ["player", objNull];
+    private _amount = _txPayload getOrDefault ["amount", 0];
+    private _uid = getPlayerUID _player;
+
+    // Call Rust to process database withdrawal transaction
+    private _res = ["bank:withdraw", [_uid, _amount]] call EFUNC(extension,call);
+    _res params ["_bankResult", "_success"];
+
+    if (_success) then {
+        // Publish success event back to the bus
+        ["forge_crate_bank_deductSucceeded", _txPayload] call CBA_fnc_localEvent;
+    } else {
+        // Add failure details and publish failure event
+        _txPayload set ["error", _bankResult];
+        ["forge_crate_bank_deductFailed", _txPayload] call CBA_fnc_localEvent;
+    };
+}] call CBA_fnc_addEventHandler;
+```
 
 ---
 
 ## 7. Extension Event Bus & CBA Hooking
 
-The native Rust extension has a central, compiled `EventBus` that fires when domain actions occur (e.g., `actor.created`, `actor.disconnected`, `organization.payday_issued`).
+The native Rust extension has a central, compiled `EventBus` that fires when core domain actions occur (e.g., `actor.created`, `actor.disconnected`, `organization.payday_issued`).
 
 These events publish durably to SurrealDB and are also dispatched back to the SQF host via the main extension callback bridge (`ExtensionCallback`). The main bridge automatically translates them into **CBA Local Events** on the server using the naming structure:
 
@@ -383,5 +482,3 @@ For example, when an organization payday completes:
     [format ["Payday of $%1 has been distributed to %2!", _amount, _orgName]] remoteExec ["systemChat", 0];
 }] call CBA_fnc_addEventHandler;
 ```
-
-
