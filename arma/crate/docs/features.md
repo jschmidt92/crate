@@ -97,6 +97,8 @@ Locker persistence normalizes equipment into a classname-keyed commodity map. We
 
 The Virtual Garage and Virtual Locker addons each expose two globally synchronized CBA settings, all enabled by default. The feature setting controls whether the virtual garage or arsenal is available at all. The persistence setting independently controls whether player unlocks are loaded and saved through Rust; when persistence is disabled, mission defaults and organization unlocks remain available for the current session. A disabled virtual module skips its profile and client snapshot without interrupting the physical garage/locker initialization chain.
 
+Virtual Locker uses ACE Arsenal and adds `Open Virtual Arsenal` to the same Eden `locker*` terminals as physical storage. The client rebuilds a hidden local ACE Arsenal box whenever its merged unlock snapshot arrives. Closing this Forge-owned arsenal publishes the existing correlated actor-save request so the actor addon persists the resulting loadout through its own domain workflow. Opening the arsenal does not modify or save unlock records; unlock persistence remains owned by `v_locker` workflows.
+
 These server workflows use the same slice names:
 
 - `lifecycle.rs`: initialize and delete records.

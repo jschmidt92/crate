@@ -1,1 +1,2 @@
 PREP(init);
+PREP(register);

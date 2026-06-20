@@ -68,6 +68,10 @@ pub fn status() -> String {
     PERSISTENCE_SERVICE.status().to_string()
 }
 
+pub fn ready() -> bool {
+    PERSISTENCE_SERVICE.ready()
+}
+
 pub fn actor_repository() -> CachedActorRepository {
     ACTOR_REPOSITORY.clone()
 }

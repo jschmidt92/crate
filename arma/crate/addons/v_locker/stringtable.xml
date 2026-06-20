@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project name="forge_crate_v_locker">
     <Package name="v_locker">
+        <Key ID="STR_forge_crate_v_locker_ActorSaveFailed">
+            <English>Your arsenal loadout could not be saved. Reopen and close the arsenal to retry.</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_locker_NoUnlocks">
+            <English>You do not have any virtual arsenal equipment unlocked.</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_locker_NotReady">
+            <English>Your virtual arsenal has not finished loading.</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_locker_Open">
+            <English>Open Virtual Arsenal</English>
+        </Key>
         <Key ID="STR_forge_crate_v_locker_displayName">
             <English>Virtual Locker</English>
         </Key>

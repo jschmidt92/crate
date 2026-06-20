@@ -73,11 +73,20 @@ impl PersistenceService {
     pub fn status(&self) -> PersistenceStatus {
         self.metrics.status()
     }
+
+    pub fn ready(&self) -> bool {
+        !self.metrics.enabled.load(Ordering::Relaxed) || self.metrics.ready.load(Ordering::Acquire)
+    }
 }
 
 async fn worker(config: DatabaseConfig, mut receiver: mpsc::Receiver<WriteOp>) {
     let mut repository = connect_with_retry(&config).await;
     hydrate(&repository).await;
+    super::PERSISTENCE_SERVICE
+        .metrics
+        .ready
+        .store(true, Ordering::Release);
+    log::info(format_args!("surrealdb cache hydration completed"));
 
     while let Some(op) = receiver.recv().await {
         super::PERSISTENCE_SERVICE

@@ -45,7 +45,7 @@ private _callExtension = {
     [_payload, _success]
 };
 
-private _directCommands = ["version", "status", "database_status", "config_path", "log_path"];
+private _directCommands = ["version", "status", "database_status", "database_ready", "config_path", "log_path"];
 if (_command in _directCommands || {(_command find "refuel:") == 0} || {(_command find "transport:") == 0}) exitWith {
     [_command, _arguments] call _callExtension
 };

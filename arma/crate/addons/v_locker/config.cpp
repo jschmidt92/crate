@@ -8,6 +8,7 @@ class CfgPatches {
         name = COMPONENT_NAME;
         requiredVersion = REQUIRED_VERSION;
         requiredAddons[] = {
+            "ace_arsenal",
             "forge_crate_main",
             "forge_crate_common",
             "forge_crate_extension",

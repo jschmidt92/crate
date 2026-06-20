@@ -30,6 +30,7 @@ params [
 ];
 
 if (isNull _player || { !local _player } || { _actor isEqualTo createHashMap }) exitWith { false };
+
 private _useDefaultLoadout = _created || { !GVAR(persistLoadout) };
 if (_useDefaultLoadout) then {
     removeAllWeapons _player;
@@ -49,9 +50,6 @@ private _loadout = if (_useDefaultLoadout) then {
 };
 if (_loadout isEqualType [] && { _loadout isNotEqualTo [] }) then {
     _player setUnitLoadout [_loadout, false];
-};
-if (_actor getOrDefault ["holster", true]) then {
-    _player action ["SwitchWeapon", _player, _player, 100];
 };
 
 if (!_created && { GVAR(persistPosition) }) then {
@@ -86,6 +84,10 @@ if !(_created) then {
         default { "Stand" };
     };
     _player playActionNow _stanceAction;
+};
+
+if (_actor getOrDefault ["holster", true]) then {
+    _player action ["SwitchWeapon", _player, _player, 100];
 };
 
 true

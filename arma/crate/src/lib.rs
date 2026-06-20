@@ -60,6 +60,7 @@ fn init() -> Extension {
         .command("version", get_version)
         .command("status", get_status)
         .command("database_status", get_database_status)
+        .command("database_ready", get_database_ready)
         .command("config_path", get_config_path)
         .command("log_path", get_log_path)
         .group("actor", actor_group())
@@ -115,6 +116,10 @@ fn get_status() -> String {
 
 fn get_database_status() -> String {
     persistence::status()
+}
+
+fn get_database_ready() -> String {
+    persistence::ready().to_string()
 }
 
 fn get_config_path() -> String {

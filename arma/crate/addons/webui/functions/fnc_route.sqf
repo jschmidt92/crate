@@ -47,7 +47,10 @@ private _event = if (_parsed && { _payload isEqualType createHashMap }) then {
 };
 
 if (_event isEqualTo "ui::close") exitWith {
-    closeDialog 0;
+    private _display = ctrlParent _control;
+    if !(isNull _display) then {
+        _display closeDisplay 2;
+    };
     true
 };
 

@@ -4,7 +4,7 @@ if !(isMultiplayer) exitWith {};
 
 [QGVAR(initPlayer), {
     params [["_player", objNull, [objNull]]];
-    [_player] call FUNC(init);
+    [_player] call FUNC(queue);
 }] call CFUNC(addEventHandler);
 
 [QGVAR(disconnectPlayer), {
