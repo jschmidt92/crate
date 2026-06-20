@@ -277,7 +277,7 @@ requestFromArma("market::buy", { itemId: "arifle_MX_F", price: 1200 })
 ```
 
 ### Step 2: Add Your Namespace to `fnc_route.sqf`
-Add a case matching your namespace to the switch statement:
+Add a case matching your namespace to the switch statement, routing to your own server RPC (`marketRequest`):
 
 ```sqf
     case "market": {
@@ -285,41 +285,40 @@ Add a case matching your namespace to the switch statement:
         private _data = _payload getOrDefault ["data", createHashMap];
 
         if (_requestId isNotEqualTo "" && { !isNull player }) then {
-            [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
+            [SRPC(market,marketRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
         };
     };
 ```
 
 ### Step 3: Handle the Event on the Server
-Listen to `"forge_crate_webui_bankRequest"` on the server and process the market logic:
+Listen to `"forge_crate_market_marketRequest"` (resolved from the `marketRequest` RPC) on the server, process the purchase logic, and deduct funds using the bank API:
 
 ```sqf
 // Server-side custom addon init:
-["forge_crate_webui_bankRequest", {
+["forge_crate_market_marketRequest", {
     params ["_player", "_requestId", "_event", "_data"];
     
-    // Intercept our custom namespace
-    if ((_event find "market::") == 0) then {
-        switch (_event) do {
-            case "market::buy": {
-                private _itemId = _data getOrDefault ["itemId", ""];
-                private _price = _data getOrDefault ["price", 99999];
-                
-                // 1. Process custom game logic (e.g., inventory space and bank check)
-                private _success = [_player, _itemId, _price] call my_mod_fnc_processPurchase;
-                
-                // 2. Prepare client response
-                private _response = createHashMapFromArray [
-                    ["requestId", _requestId],
-                    ["event", _event],
-                    ["ok", _success],
-                    ["data", createHashMapFromArray [["itemId", _itemId], ["status", "delivered"]]],
-                    ["error", if (_success) then { "" } else { "Insufficient funds or inventory space." }]
-                ];
-                
-                // 3. Dispatch response back to the player client
-                ["forge_crate_webui_bankResponse", [_response], _player] call CBA_fnc_targetEvent;
-            };
+    switch (_event) do {
+        case "market::buy": {
+            private _itemId = _data getOrDefault ["itemId", ""];
+            private _price = _data getOrDefault ["price", 99999];
+            
+            // 1. Process custom game logic (e.g., inventory space check and bank check)
+            // Behind the scenes, my_mod_fnc_processPurchase calls the Rust extension
+            // or bank commands to withdraw the price from the player's account.
+            private _success = [_player, _itemId, _price] call my_mod_fnc_processPurchase;
+            
+            // 2. Prepare client response
+            private _response = createHashMapFromArray [
+                ["requestId", _requestId],
+                ["event", _event],
+                ["ok", _success],
+                ["data", createHashMapFromArray [["itemId", _itemId], ["status", "delivered"]]],
+                ["error", if (_success) then { "" } else { "Insufficient funds or inventory space." }]
+            ];
+            
+            // 3. Dispatch response back to the player client (uses standard client event bridge)
+            ["forge_crate_webui_bankResponse", [_response], _player] call CBA_fnc_targetEvent;
         };
     };
 }] call CBA_fnc_addEventHandler;
