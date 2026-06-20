@@ -231,14 +231,30 @@ You can trigger sound effects, custom notification toasts, or UI updates in-game
 }] call CBA_fnc_addEventHandler;
 ```
 
----
-
 ## 5. Adding New Custom Events to the Bridge
 
-You can extend the interface to support operations outside of banking (e.g., custom garages, item markets, lockboxes) without altering `fnc_route.sqf` or `fnc_bankRequest.sqf`.
+You can extend the interface to support operations outside of banking (e.g., custom garages, item markets, lockboxes). 
+
+### How Namespace Routing Works
+The client-side event router `fnc_route.sqf` automatically parses incoming event strings and splits them by the `:` delimiter. The first segment is extracted as the event's **namespace**. A `switch-case` statement evaluates this namespace for routing:
+
+```sqf
+private _parts = _event splitString ":";
+private _namespace = if (count _parts > 0) then { _parts select 0 } else { "" };
+
+switch (_namespace) do {
+    case "ui": { ... };
+    case "bank": { ... };
+    default {
+        // Placeholder for future namespaces (e.g., garage, locker, market)
+    };
+};
+```
+
+To implement a new feature (e.g., a weapon store market):
 
 ### Step 1: Send the Custom Action from JavaScript
-Your custom UI can issue a request containing a unique prefix, such as `market::buy`:
+Your custom UI issues a request containing your namespace prefix, such as `market::buy`:
 
 ```javascript
 requestFromArma("market::buy", { itemId: "arifle_MX_F", price: 1200 })
@@ -246,8 +262,23 @@ requestFromArma("market::buy", { itemId: "arifle_MX_F", price: 1200 })
     .catch((err) => console.error("Purchase failed:", err.message));
 ```
 
-### Step 2: Handle it on the Server
-Because `fnc_route.sqf` only filters bank requests automatically, you can attach a fallback routing script for other namespaces, or define your own handler for `forge_crate_webui_bankRequest`:
+### Step 2: Add Your Namespace to `fnc_route.sqf`
+Add a case matching your namespace to route payloads of your module to a server event:
+
+```sqf
+    case "market": {
+        private _requestId = _payload getOrDefault ["requestId", ""];
+        private _data = _payload getOrDefault ["data", createHashMap];
+
+        if (_requestId isNotEqualTo "" && { !isNull player }) then {
+            // Forward the payload to the server for processing
+            [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
+        };
+    };
+```
+
+### Step 3: Handle the Event on the Server
+Listen to `"forge_crate_webui_bankRequest"` on the server and process the market logic:
 
 ```sqf
 // Server-side custom addon init:
@@ -256,8 +287,6 @@ Because `fnc_route.sqf` only filters bank requests automatically, you can attach
     
     // Intercept our custom namespace
     if ((_event find "market::") == 0) then {
-        private _uid = getPlayerUID _player;
-        
         switch (_event) do {
             case "market::buy": {
                 private _itemId = _data getOrDefault ["itemId", ""];
@@ -272,7 +301,7 @@ Because `fnc_route.sqf` only filters bank requests automatically, you can attach
                     ["event", _event],
                     ["ok", _success],
                     ["data", createHashMapFromArray [["itemId", _itemId], ["status", "delivered"]]],
-                    ["error", if (_success) then { "" } else { "Insufficient funds or inventory full." }]
+                    ["error", if (_success) then { "" } else { "Insufficient funds or inventory space." }]
                 ];
                 
                 // 3. Dispatch response back to the player client
@@ -283,4 +312,5 @@ Because `fnc_route.sqf` only filters bank requests automatically, you can attach
 }] call CBA_fnc_addEventHandler;
 ```
 
-Using this approach, developers can deploy entire sub-apps (such as dynamic vehicle dealerships, persistent lockbox managers, or administrative panels) utilizing the secure, asynchronous bridge established by the framework.
+Using this approach, developers can easily deploy entire sub-apps (such as dynamic vehicle dealerships, persistent lockbox managers, or administrative panels) utilizing the secure, asynchronous bridge established by the framework.
+

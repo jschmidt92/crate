@@ -46,21 +46,29 @@ private _event = if (_parsed && { _payload isEqualType createHashMap }) then {
     "ui::message"
 };
 
-if (_event isEqualTo "ui::close") exitWith {
-    private _display = ctrlParent _control;
-    if !(isNull _display) then {
-        _display closeDisplay 2;
+private _parts = _event splitString ":";
+private _namespace = if (count _parts > 0) then { _parts select 0 } else { "" };
+
+switch (_namespace) do {
+    case "ui": {
+        if (_event isEqualTo "ui::close") then {
+            private _display = ctrlParent _control;
+            if !(isNull _display) then {
+                _display closeDisplay 2;
+            };
+        };
     };
-    true
-};
+    case "bank": {
+        private _requestId = _payload getOrDefault ["requestId", ""];
+        private _data = _payload getOrDefault ["data", createHashMap];
 
-if ((_event find "bank::") == 0) exitWith {
-    private _requestId = _payload getOrDefault ["requestId", ""];
-    private _data = _payload getOrDefault ["data", createHashMap];
-
-    if (_requestId isEqualTo "" || { isNull player }) exitWith { false };
-    [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
-    true
+        if (_requestId isNotEqualTo "" && { !isNull player }) then {
+            [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
+        };
+    };
+    default {
+        // Placeholder for future namespaces (e.g., garage, locker, market)
+    };
 };
 
 true
