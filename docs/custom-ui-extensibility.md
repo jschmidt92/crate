@@ -236,30 +236,31 @@ You can trigger sound effects, custom notification toasts, or UI updates in-game
 You can extend the interface to support operations outside of banking (e.g., custom garages, item markets, lockboxes). 
 
 ### How Event Routing Works
-The client-side event router `fnc_route.sqf` evaluates incoming events. Local client-side operations (like `"ui::close"`) are matched at the top-level switch statement. Other namespace-based events (like `"bank::load"`) fall through to the `default` block, where they are split by the `:` delimiter to extract their namespace for routing:
+The client-side event router `fnc_route.sqf` evaluates incoming events. Local client-side operations (like `"ui::close"`) are matched immediately at the beginning via a fast `exitWith` block. This bypasses any string allocation or array splitting for local UI calls. Other events fall through, are split by the `:` delimiter to extract their **namespace**, and are routed via a switch statement on `_namespace`:
 
 ```sqf
-switch (_event) do {
-    case "ui::close": {
-        private _display = ctrlParent _control;
-        if !(isNull _display) then {
-            _display closeDisplay 2;
+if (_event isEqualTo "ui::close") exitWith {
+    private _display = ctrlParent _control;
+    if !(isNull _display) then {
+        _display closeDisplay 2;
+    };
+    true
+};
+
+private _parts = _event splitString ":";
+private _namespace = if (count _parts > 0) then { _parts select 0 } else { "" };
+
+switch (_namespace) do {
+    case "bank": {
+        private _requestId = _payload getOrDefault ["requestId", ""];
+        private _data = _payload getOrDefault ["data", createHashMap];
+
+        if (_requestId isNotEqualTo "" && { !isNull player }) then {
+            [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
         };
     };
     default {
-        private _parts = _event splitString ":";
-        private _namespace = if (count _parts > 0) then { _parts select 0 } else { "" };
-
-        switch (_namespace) do {
-            case "bank": {
-                private _requestId = _payload getOrDefault ["requestId", ""];
-                private _data = _payload getOrDefault ["data", createHashMap];
-
-                if (_requestId isNotEqualTo "" && { !isNull player }) then {
-                    [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
-                };
-            };
-        };
+        // Empty for the moment
     };
 };
 ```
@@ -276,17 +277,17 @@ requestFromArma("market::buy", { itemId: "arifle_MX_F", price: 1200 })
 ```
 
 ### Step 2: Add Your Namespace to `fnc_route.sqf`
-Add a case matching your namespace under the nested switch statement:
+Add a case matching your namespace to the switch statement:
 
 ```sqf
-            case "market": {
-                private _requestId = _payload getOrDefault ["requestId", ""];
-                private _data = _payload getOrDefault ["data", createHashMap];
+    case "market": {
+        private _requestId = _payload getOrDefault ["requestId", ""];
+        private _data = _payload getOrDefault ["data", createHashMap];
 
-                if (_requestId isNotEqualTo "" && { !isNull player }) then {
-                    [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
-                };
-            };
+        if (_requestId isNotEqualTo "" && { !isNull player }) then {
+            [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
+        };
+    };
 ```
 
 ### Step 3: Handle the Event on the Server
