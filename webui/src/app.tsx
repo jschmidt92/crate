@@ -115,7 +115,6 @@ export function App() {
                     <LandingPage
                         landingRef={landingRef}
                         mapRef={mapRef}
-                        onOpenMap={() => scrollToSection("map")}
                         onOpenModule={openModule}
                         onScrollToSection={scrollToSection}
                     />
@@ -151,13 +150,11 @@ export function App() {
 function LandingPage({
     landingRef,
     mapRef,
-    onOpenMap,
     onOpenModule,
     onScrollToSection
 }: {
     landingRef: RefObject<HTMLElement>;
     mapRef: RefObject<HTMLElement>;
-    onOpenMap: () => void;
     onOpenModule: (moduleId: string) => void;
     onScrollToSection: (section: Section) => void;
 }) {
@@ -172,10 +169,6 @@ function LandingPage({
                         services, and notifications.
                     </p>
                     <div className="actions">
-                        <button className="primary-action" type="button" onClick={onOpenMap}>
-                            Open Map Page
-                        </button>
-
                         <button
                             className="secondary-action"
                             type="button"
