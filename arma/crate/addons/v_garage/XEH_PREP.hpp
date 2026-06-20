@@ -1,1 +1,1 @@
-PREP(initPlayer);
+PREP(init);

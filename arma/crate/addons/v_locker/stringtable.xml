@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="forge_crate_v_locker">
+    <Package name="v_locker">
+        <Key ID="STR_forge_crate_v_locker_displayName">
+            <English>Virtual Locker</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_locker_setting_enabled">
+            <English>Enable Virtual Arsenal</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_locker_setting_enabled_tooltip">
+            <English>Enable player and organization virtual arsenal unlocks.</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_locker_setting_persistenceEnabled">
+            <English>Persist Virtual Arsenal Unlocks</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_locker_setting_persistenceEnabled_tooltip">
+            <English>Load and save player virtual arsenal unlocks through the Rust persistence backend. When disabled, mission and organization unlocks remain available for the current session.</English>
+        </Key>
+    </Package>
+</Project>

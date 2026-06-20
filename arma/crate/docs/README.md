@@ -9,3 +9,4 @@ Start here:
 - [Events](events.md): domain events, the central event bus, durable audit records, and notifications.
 - [Adding Features](adding-features.md): practical checklist for adding a new server feature.
 - [Persistence](persistence.md): SurrealDB persistence, hydration, queued writes, and transaction behavior.
+- [Logging](logging.md): asynchronous domain logs, file locations, and path overrides.

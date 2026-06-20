@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="Forge Crate">
+    <Package name="Locker">
+        <Key ID="STR_forge_crate_locker_AlreadyOpen">
+            <English>Your locker is already open.</English>
+        </Key>
+        <Key ID="STR_forge_crate_locker_Open">
+            <English>Open Locker</English>
+        </Key>
+        <Key ID="STR_forge_crate_locker_SaveFailed">
+            <English>Your locker could not be loaded or saved.</English>
+        </Key>
+        <Key ID="STR_forge_crate_locker_SaveRetry">
+            <English>Your actor could not be saved. Open the locker again to retry.</English>
+        </Key>
+    </Package>
+</Project>

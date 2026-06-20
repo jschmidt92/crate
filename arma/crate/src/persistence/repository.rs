@@ -1,4 +1,5 @@
 use super::{enqueue, enqueue_delete, enqueue_upsert, model::WriteOp, upsert_op};
+use crate::log;
 use forge_lib::models::{Notification, PlayerGarage, PlayerLocker, PlayerVGarage, PlayerVLocker};
 use forge_lib::{
     models::{Actor, Organization, OrganizationInvite, PlayerBankProfile},
@@ -30,7 +31,9 @@ impl CachedActorRepository {
 
 impl ActorRepository for CachedActorRepository {
     fn find_by_uid(&self, uid: &str) -> Result<Option<Actor>, ActorError> {
-        self.cache.find_by_uid(uid)
+        let result = self.cache.find_by_uid(uid);
+        log_find("actor", uid, &result);
+        result
     }
 
     fn save(&self, actor: Actor) -> Result<Actor, ActorError> {
@@ -47,6 +50,7 @@ impl ActorRepository for CachedActorRepository {
 }
 
 pub(super) fn cache_actor(repository: &CachedActorRepository, actor: Actor) {
+    log_hydrate("actor", &actor.uid);
     let _ = repository.cache.save(actor);
 }
 
@@ -72,7 +76,9 @@ impl CachedBankRepository {
 
 impl BankRepository for CachedBankRepository {
     fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerBankProfile>, BankError> {
-        self.cache.find_by_uid(uid)
+        let result = self.cache.find_by_uid(uid);
+        log_find("bank", uid, &result);
+        result
     }
 
     fn save(&self, profile: PlayerBankProfile) -> Result<PlayerBankProfile, BankError> {
@@ -102,6 +108,7 @@ impl BankRepository for CachedBankRepository {
 }
 
 pub(super) fn cache_bank_profile(repository: &CachedBankRepository, profile: PlayerBankProfile) {
+    log_hydrate("bank", &profile.uid);
     let _ = repository.cache.save(profile);
 }
 
@@ -120,7 +127,9 @@ impl CachedGarageRepository {
 
 impl GarageRepository for CachedGarageRepository {
     fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerGarage>, GarageError> {
-        self.cache.find_by_uid(uid)
+        let result = self.cache.find_by_uid(uid);
+        log_find("garage", uid, &result);
+        result
     }
 
     fn save(&self, garage: PlayerGarage) -> Result<PlayerGarage, GarageError> {
@@ -137,6 +146,7 @@ impl GarageRepository for CachedGarageRepository {
 }
 
 pub(super) fn cache_garage(repository: &CachedGarageRepository, garage: PlayerGarage) {
+    log_hydrate("garage", &garage.uid);
     let _ = repository.cache.save(garage);
 }
 
@@ -155,7 +165,9 @@ impl CachedLockerRepository {
 
 impl LockerRepository for CachedLockerRepository {
     fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerLocker>, LockerError> {
-        self.cache.find_by_uid(uid)
+        let result = self.cache.find_by_uid(uid);
+        log_find("locker", uid, &result);
+        result
     }
 
     fn save(&self, locker: PlayerLocker) -> Result<PlayerLocker, LockerError> {
@@ -172,6 +184,7 @@ impl LockerRepository for CachedLockerRepository {
 }
 
 pub(super) fn cache_locker(repository: &CachedLockerRepository, locker: PlayerLocker) {
+    log_hydrate("locker", &locker.uid);
     let _ = repository.cache.save(locker);
 }
 
@@ -197,15 +210,22 @@ impl CachedNotificationRepository {
 
 impl NotificationRepository for CachedNotificationRepository {
     fn list_by_uid(&self, uid: &str) -> Result<Vec<Notification>, NotificationError> {
-        self.cache.list_by_uid(uid)
+        let result = self.cache.list_by_uid(uid);
+        log_list("notification", uid, &result);
+        result
     }
 
     fn list_unread_by_uid(&self, uid: &str) -> Result<Vec<Notification>, NotificationError> {
-        self.cache.list_unread_by_uid(uid)
+        let result = self.cache.list_unread_by_uid(uid);
+        log_list("notification", uid, &result);
+        result
     }
 
     fn find_by_id(&self, id: uuid::Uuid) -> Result<Option<Notification>, NotificationError> {
-        self.cache.find_by_id(id)
+        let key = id.to_string();
+        let result = self.cache.find_by_id(id);
+        log_find("notification", &key, &result);
+        result
     }
 
     fn save(&self, notification: Notification) -> Result<Notification, NotificationError> {
@@ -233,6 +253,7 @@ pub(super) fn cache_notification(
     repository: &CachedNotificationRepository,
     notification: Notification,
 ) {
+    log_hydrate("notification", &notification.id.to_string());
     let _ = repository.cache.save(notification);
 }
 
@@ -251,7 +272,9 @@ impl CachedVGarageRepository {
 
 impl VGarageRepository for CachedVGarageRepository {
     fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerVGarage>, VGarageError> {
-        self.cache.find_by_uid(uid)
+        let result = self.cache.find_by_uid(uid);
+        log_find("v_garage", uid, &result);
+        result
     }
 
     fn save(&self, garage: PlayerVGarage) -> Result<PlayerVGarage, VGarageError> {
@@ -268,6 +291,7 @@ impl VGarageRepository for CachedVGarageRepository {
 }
 
 pub(super) fn cache_v_garage(repository: &CachedVGarageRepository, garage: PlayerVGarage) {
+    log_hydrate("v_garage", &garage.uid);
     let _ = repository.cache.save(garage);
 }
 
@@ -286,7 +310,9 @@ impl CachedVLockerRepository {
 
 impl VLockerRepository for CachedVLockerRepository {
     fn find_by_uid(&self, uid: &str) -> Result<Option<PlayerVLocker>, VLockerError> {
-        self.cache.find_by_uid(uid)
+        let result = self.cache.find_by_uid(uid);
+        log_find("v_locker", uid, &result);
+        result
     }
 
     fn save(&self, locker: PlayerVLocker) -> Result<PlayerVLocker, VLockerError> {
@@ -303,6 +329,7 @@ impl VLockerRepository for CachedVLockerRepository {
 }
 
 pub(super) fn cache_v_locker(repository: &CachedVLockerRepository, locker: PlayerVLocker) {
+    log_hydrate("v_locker", &locker.uid);
     let _ = repository.cache.save(locker);
 }
 
@@ -328,15 +355,21 @@ impl CachedOrganizationRepository {
 
 impl OrganizationRepository for CachedOrganizationRepository {
     fn find_by_id(&self, id: &str) -> Result<Option<Organization>, OrganizationError> {
-        self.cache.find_by_id(id)
+        let result = self.cache.find_by_id(id);
+        log_find("organization", id, &result);
+        result
     }
 
     fn find_by_member_uid(&self, uid: &str) -> Result<Option<Organization>, OrganizationError> {
-        self.cache.find_by_member_uid(uid)
+        let result = self.cache.find_by_member_uid(uid);
+        log_find("organization", uid, &result);
+        result
     }
 
     fn find_invite(&self, id: &str) -> Result<Option<OrganizationInvite>, OrganizationError> {
-        self.cache.find_invite(id)
+        let result = self.cache.find_invite(id);
+        log_find("organization", id, &result);
+        result
     }
 
     fn find_pending_invite(
@@ -344,7 +377,9 @@ impl OrganizationRepository for CachedOrganizationRepository {
         organization_id: &str,
         invitee_uid: &str,
     ) -> Result<Option<OrganizationInvite>, OrganizationError> {
-        self.cache.find_pending_invite(organization_id, invitee_uid)
+        let result = self.cache.find_pending_invite(organization_id, invitee_uid);
+        log_find("organization", invitee_uid, &result);
+        result
     }
 
     fn save(&self, organization: Organization) -> Result<Organization, OrganizationError> {
@@ -373,6 +408,7 @@ pub(super) fn cache_organization(
     repository: &CachedOrganizationRepository,
     organization: Organization,
 ) {
+    log_hydrate("organization", &organization.id);
     let _ = repository.cache.save(organization);
 }
 
@@ -380,5 +416,31 @@ pub(super) fn cache_organization_invite(
     repository: &CachedOrganizationRepository,
     invite: OrganizationInvite,
 ) {
+    log_hydrate("organization", &invite.id.to_string());
     let _ = repository.cache.save_invite(invite);
+}
+
+fn log_find<T, E>(domain: &'static str, key: &str, result: &Result<Option<T>, E>) {
+    if let Ok(value) = result {
+        log::debug_in(
+            domain,
+            format_args!(
+                "cache pull key={key} result={}",
+                if value.is_some() { "hit" } else { "miss" }
+            ),
+        );
+    }
+}
+
+fn log_list<T, E>(domain: &'static str, key: &str, result: &Result<Vec<T>, E>) {
+    if let Ok(values) = result {
+        log::debug_in(
+            domain,
+            format_args!("cache list key={key} records={}", values.len()),
+        );
+    }
+}
+
+fn log_hydrate(domain: &'static str, key: &str) {
+    log::debug_in(domain, format_args!("hydrated cache record key={key}"));
 }

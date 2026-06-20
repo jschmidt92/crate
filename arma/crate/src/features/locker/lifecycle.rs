@@ -1,9 +1,13 @@
 use super::LockerFeature;
-use forge_lib::{models::PlayerLocker, repositories::LockerRepository, shared::LockerError};
+use forge_lib::{
+    events::EventPublisher, models::PlayerLocker, repositories::LockerRepository,
+    shared::LockerError,
+};
 
-impl<R> LockerFeature<R>
+impl<R, E> LockerFeature<R, E>
 where
     R: LockerRepository,
+    E: EventPublisher,
 {
     pub(crate) fn init(&self, uid: &str) -> Result<PlayerLocker, LockerError> {
         self.service.create_actor_locker(uid)

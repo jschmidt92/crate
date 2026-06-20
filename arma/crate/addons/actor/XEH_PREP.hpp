@@ -1,3 +1,6 @@
-PREP(disconnectPlayer);
-PREP(initPlayer);
-PREP(snapshotFromPlayer);
+PREP(apply);
+PREP(capture);
+PREP(disconnect);
+PREP(init);
+PREP(initState);
+PREP(transition);

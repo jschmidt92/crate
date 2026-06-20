@@ -14,10 +14,10 @@ addMissionEventHandler ["PlayerConnected", {
 
     [{
         params ["_uid"];
-        !isNull ([_uid] call EFUNC(common,getPlayerByUID))
+        !isNull ([_uid] call EFUNC(common,findPlayer))
     }, {
         params ["_uid"];
-        private _player = [_uid] call EFUNC(common,getPlayerByUID);
+        private _player = [_uid] call EFUNC(common,findPlayer);
         [QGVAR(initPlayer), [_player]] call CFUNC(localEvent);
     }, [_uid]] call CFUNC(waitUntilAndExecute);
 }];

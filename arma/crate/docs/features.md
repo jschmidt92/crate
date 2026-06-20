@@ -11,9 +11,15 @@ Main files:
 - `arma/crate/src/actor.rs`
 - `arma/crate/src/features/actor/*`
 
-Actor init accepts an `ActorSnapshot`. If the actor is new, `ActorService::init_or_create` creates it and returns an `ActorCreated` domain event. The actor feature publishes that event through the central event bus.
+Actor init accepts an `ActorSnapshot` and returns an actor plus a `created` flag. If the actor is new, `ActorService::init_or_create` persists the mission-configured default loadout and returns an `ActorCreated` domain event. The actor feature publishes that event through the central event bus. SQF strips the local player before applying this default loadout.
+
+If an actor already exists, initialization treats the persisted actor as authoritative and does not save the temporary spawn snapshot over it. Client SQF restores the persisted loadout, ASL position, direction, rank, and stance. If position restoration leaves the player more than five meters above local ground while descending, SQF clears their velocity and moves them to a safe one-meter ATL position. Life-state metadata remains available to respawn and medical workflows rather than forcing a returning player dead or inventing an injury severity.
 
 Actor disconnect persists the live player snapshot and publishes `ActorDisconnected`. Bank, garage, locker, and virtual-storage cleanup then fan out through the central event bus.
+
+Client synchronization uses a small `createHashMap` state machine rather than a second repository. Its active path is `UNINITIALIZED` to `LOADING` to `APPLYING` to `READY`, with `FAILED` as the error state and retry source. All transitions go through the actor `transition` function, which rejects invalid changes, publishes `forge_crate_actor_lifecycleStateChanged`, and updates the player readiness variables. Server-side initialization guards prevent duplicate requests from racing multiple actor responses.
+
+Actor CBA settings control position and loadout persistence independently. Both default to enabled and are globally synchronized. Disabling either setting stops restore and prevents disconnect snapshots from replacing the last persisted value. With loadout persistence disabled, the configured mission loadout is applied on every login.
 
 Actor server workflows are organized as vertical slices:
 
@@ -82,6 +88,14 @@ Main files:
 - `arma/crate/src/features/v_locker/*`
 
 Physical garage/locker data and virtual unlock collections are separate models and repositories.
+
+Physical locker access points are Eden-placed containers or objects with variable names `locker`, `locker_1`, `locker_2`, and so on. The locker addon discovers names through `locker_999` and adds an `Open Locker` action to each valid object. The placed object is only an access terminal, so the server clears and locks its ordinary shared cargo. Persisted player cargo is materialized in a hidden, server-created networked inventory proxy unique to that request, captured when the inventory closes, and saved through `locker:save` before the server deletes the proxy. Networked proxies are required because Arma does not support backpacks inside local-only containers during multiplayer. Multiple players can still use the same terminal concurrently because each request receives a separate proxy.
+
+Closing a locker publishes a correlated CBA actor-save request. The actor addon captures and persists its own post-transfer loadout through `actor:save`; only its success response allows the locker addon to normalize and persist its own proxy through `locker:commit`. This fail-closed ordering prevents the locker from accepting deposited equipment while the persisted actor still owns it. If actor persistence fails, the proxy remains available but is not reopened automatically. The player must explicitly use `Open Locker` again to retry, preventing recursive inventory-close loops. On disconnect, the actor addon's successful disconnect save emits a server-local event that allows locker persistence; failed actor persistence discards the temporary proxy without updating the locker.
+
+Locker persistence normalizes equipment into a classname-keyed commodity map. Weapon attachments are detached, loaded primary and secondary muzzle magazines become magazine entries, and nested container contents are recursively flattened. Uniforms, vests, and backpacks therefore return empty, with their former contents available as loose locker cargo. Every commodity record includes an `ammo` field, which is zero for non-magazine entries. Magazine entries retain both object quantity and aggregate remaining ammunition; restoration redistributes those rounds into full magazines followed by a partial magazine.
+
+The Virtual Garage and Virtual Locker addons each expose two globally synchronized CBA settings, all enabled by default. The feature setting controls whether the virtual garage or arsenal is available at all. The persistence setting independently controls whether player unlocks are loaded and saved through Rust; when persistence is disabled, mission defaults and organization unlocks remain available for the current session. A disabled virtual module skips its profile and client snapshot without interrupting the physical garage/locker initialization chain.
 
 These server workflows use the same slice names:
 

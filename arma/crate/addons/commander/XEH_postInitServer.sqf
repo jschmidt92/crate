@@ -3,7 +3,7 @@
 if !(isMultiplayer) exitWith {};
 if (isNil QGVAR(service)) then {
     private _overrides = createHashMapFromArray (getArray (missionConfigFile >> "CfgMission" >> "Commander"));
-    [_overrides] call FUNC(createCommander);
+    [_overrides] call FUNC(create);
 };
 
 [{

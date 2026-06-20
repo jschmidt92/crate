@@ -9,6 +9,7 @@ class CfgPatches {
         requiredVersion = REQUIRED_VERSION;
         requiredAddons[] = {
             "forge_crate_main",
+            "forge_crate_actor",
             "forge_crate_common",
             "forge_crate_extension",
             "forge_crate_v_garage"

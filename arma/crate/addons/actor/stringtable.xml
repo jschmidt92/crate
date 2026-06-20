@@ -4,5 +4,17 @@
         <Key ID="STR_forge_crate_actor_displayName">
             <English>Actor</English>
         </Key>
+        <Key ID="STR_forge_crate_actor_setting_persistLoadout">
+            <English>Persist Loadout</English>
+        </Key>
+        <Key ID="STR_forge_crate_actor_setting_persistLoadout_tooltip">
+            <English>Save and restore live actor loadouts. When disabled, actors receive the configured default loadout on every login.</English>
+        </Key>
+        <Key ID="STR_forge_crate_actor_setting_persistPosition">
+            <English>Persist Position</English>
+        </Key>
+        <Key ID="STR_forge_crate_actor_setting_persistPosition_tooltip">
+            <English>Save and restore each actor's position between sessions.</English>
+        </Key>
     </Package>
 </Project>

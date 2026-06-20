@@ -15,9 +15,28 @@ static ACTOR_FEATURE: LazyLock<
 pub fn group() -> Group {
     Group::new()
         .command("init", init_actor)
+        .command("save", save_actor)
         .command("disconnect", disconnect_actor)
         .command("get", get_actor)
         .command("delete", delete_actor)
+}
+
+pub(crate) fn save_actor(snapshot_json: String) -> String {
+    let snapshot = match serde_json::from_str::<ActorSnapshot>(&snapshot_json) {
+        Ok(snapshot) => snapshot,
+        Err(error) => {
+            log::error(format_args!("invalid actor save snapshot: {error}"));
+            return format!("Error: invalid actor save snapshot: {error}");
+        }
+    };
+
+    match ACTOR_FEATURE.save_snapshot(snapshot) {
+        Ok(actor) => response::json(&actor, "actor save result"),
+        Err(error) => {
+            log::error(format_args!("failed to save actor: {error}"));
+            format!("Error: {error}")
+        }
+    }
 }
 
 pub(crate) fn init_actor(snapshot_json: String) -> String {
@@ -30,7 +49,19 @@ pub(crate) fn init_actor(snapshot_json: String) -> String {
     };
 
     match ACTOR_FEATURE.init_or_create(snapshot) {
-        Ok(actor) => response::json(&actor, "actor init result"),
+        Ok(result) => {
+            log::debug(format_args!(
+                "actor initialization completed uid={} created={}",
+                result.actor.uid, result.created
+            ));
+            response::json(
+                &serde_json::json!({
+                    "actor": result.actor,
+                    "created": result.created,
+                }),
+                "actor init result",
+            )
+        }
         Err(error) => {
             log::error(format_args!("failed to init actor: {error}"));
             format!("Error: {error}")

@@ -31,14 +31,14 @@ params [
 if (_uid isEqualTo "") exitWith { createHashMap };
 if (_organization isEqualTo "") then { _organization = "default"; };
 if (_amount isEqualTo "") then {
-    _amount = [missionConfigFile >> "CfgMission" >> "DefaultOrganization" >> "paydayAmount", "0.00"] call EFUNC(common,getConfigMoney);
+    _amount = [missionConfigFile >> "CfgMission" >> "DefaultOrganization" >> "paydayAmount", "0.00"] call EFUNC(common,configMoney);
 };
 
-private _isDefaultCeoSlot = [_uid] call FUNC(isDefaultCeoSlot);
+private _isDefaultCeo = [_uid] call FUNC(isDefaultCeo);
 [
     "organization:issue_payday",
-    [_uid, _organization, _amount, str _isDefaultCeoSlot]
-] call EFUNC(extension,extCall) params ["_result", "_success"];
+    [_uid, _organization, _amount, str _isDefaultCeo]
+] call EFUNC(extension,call) params ["_result", "_success"];
 if !(_success) exitWith { createHashMap };
 
 private _payday = fromJSON _result;

@@ -1,4 +1,4 @@
-PREP(createCommander);
-PREP(findEnemySide);
-PREP(getObjectivesFallback);
-PREP(reassignGroups);
+PREP(create);
+PREP(enemySide);
+PREP(objectives);
+PREP(reassign);

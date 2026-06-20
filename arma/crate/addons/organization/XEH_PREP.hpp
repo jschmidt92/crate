@@ -1,5 +1,5 @@
-PREP(addPlayerMember);
+PREP(addMember);
 PREP(createDefault);
-PREP(getPlayerOrganization);
-PREP(isDefaultCeoSlot);
+PREP(getForPlayer);
+PREP(isDefaultCeo);
 PREP(issuePayday);

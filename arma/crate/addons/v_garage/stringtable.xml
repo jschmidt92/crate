@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="forge_crate_v_garage">
+    <Package name="v_garage">
+        <Key ID="STR_forge_crate_v_garage_displayName">
+            <English>Virtual Garage</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_garage_setting_enabled">
+            <English>Enable Virtual Garage</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_garage_setting_enabled_tooltip">
+            <English>Enable player and organization virtual garage unlocks.</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_garage_setting_persistenceEnabled">
+            <English>Persist Virtual Garage Unlocks</English>
+        </Key>
+        <Key ID="STR_forge_crate_v_garage_setting_persistenceEnabled_tooltip">
+            <English>Load and save player virtual garage unlocks through the Rust persistence backend. When disabled, mission and organization unlocks remain available for the current session.</English>
+        </Key>
+    </Package>
+</Project>

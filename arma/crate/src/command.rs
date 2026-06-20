@@ -6,6 +6,7 @@ use crate::{
 pub(crate) fn dispatch(command: &str, args: Vec<String>) -> String {
     match command {
         "actor:init" => unary(args, actor::init_actor),
+        "actor:save" => unary(args, actor::save_actor),
         "actor:disconnect" => unary(args, actor::disconnect_actor),
         "actor:get" => unary(args, actor::get_actor),
         "actor:delete" => unary(args, actor::delete_actor),
@@ -26,6 +27,7 @@ pub(crate) fn dispatch(command: &str, args: Vec<String>) -> String {
         "locker:init" => unary(args, locker::init_locker),
         "locker:get" => unary(args, locker::get_locker),
         "locker:save" => unary(args, locker::save_locker),
+        "locker:commit" => unary(args, locker::commit_locker),
         "locker:delete" => unary(args, locker::delete_locker),
         "medical:respawn" => binary(args, medical::medical_respawn),
         "medical:heal" => binary(args, medical::medical_heal),

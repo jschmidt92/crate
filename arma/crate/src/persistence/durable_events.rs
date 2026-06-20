@@ -58,6 +58,20 @@ fn append_event_side_effects(
 
     match event {
         DomainEvent::ActorCreated(_) | DomainEvent::ActorDisconnected(_) => {}
+        DomainEvent::LockerTransferCommitted(event) => {
+            push_audit(
+                ops,
+                AuditRecord::new(
+                    &event.uid,
+                    AuditAction::LockerTransferCommitted,
+                    &event.uid,
+                    format!(
+                        "committed locker transfer with {} item classes and {} total items",
+                        event.distinct_items, event.total_quantity
+                    ),
+                ),
+            )?;
+        }
         DomainEvent::OrganizationCreated(event) => {
             push_audit(
                 ops,

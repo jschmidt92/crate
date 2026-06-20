@@ -74,6 +74,7 @@ impl AuditRecord {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AuditAction {
+    LockerTransferCommitted,
     OrganizationCreated,
     OrganizationDisbanded,
     OrganizationInviteCreated,

@@ -62,6 +62,8 @@ flowchart TD
 
 Each handler runs independently. A failed cleanup is logged without preventing the remaining handlers from receiving the event.
 
+Locker close uses correlated CBA events to save actor state before locker state without either domain handling the other's payload. After the locker save succeeds, Rust publishes `locker.transfer_committed`. The durable event backend records the event and a compact audit entry containing the player UID, distinct classname count, and total item quantity.
+
 ## Durable Event Backend
 
 The durable backend lives in:
@@ -112,9 +114,9 @@ Current helper functions:
 - `forge_crate_notification_fnc_unread`
 - `forge_crate_notification_fnc_markRead`
 - `forge_crate_notification_fnc_markAllRead`
-- `forge_crate_notification_fnc_notifyPlayer`
+- `forge_crate_notification_fnc_deliver`
 
-`notifyPlayer` fetches unread notifications for a player and sends them to that player with `systemChat`. The bank player-init flow calls it after bank initialization and marks displayed notifications read, so players do not see the same join-time notifications repeatedly. A later UI can replace `notifyPlayer` with a custom inbox while keeping the same Rust command surface.
+`deliver` fetches unread notifications for a player and sends them to that player with `systemChat`. The bank player-init flow calls it after bank initialization and marks displayed notifications read, so players do not see the same join-time notifications repeatedly. A later UI can replace `deliver` with a custom inbox while keeping the same Rust command surface.
 
 ## Arma Extension Callbacks
 

@@ -41,6 +41,7 @@ pub struct LockerItem {
     pub category: String,
     pub classname: String,
     pub amount: u32,
+    pub ammo: u32,
 }
 
 impl LockerItem {
@@ -53,9 +54,16 @@ impl LockerItem {
             category: category.into(),
             classname: classname.into(),
             amount,
+            ammo: 0,
         };
         item.validate()?;
         Ok(item)
+    }
+
+    pub fn with_ammo(mut self, ammo: u32) -> Result<Self, LockerError> {
+        self.ammo = ammo;
+        self.validate()?;
+        Ok(self)
     }
 
     pub fn validate(&self) -> Result<(), LockerError> {
@@ -113,5 +121,15 @@ mod tests {
             LockerItem::new("items", "FirstAidKit", 0).expect_err("amount should be invalid"),
             LockerError::InvalidAmount
         );
+    }
+
+    #[test]
+    fn locker_magazine_preserves_aggregate_ammo() {
+        let item = LockerItem::new("magazines", "30Rnd_65x39_caseless_mag", 3)
+            .and_then(|item| item.with_ammo(67))
+            .expect("magazine should be valid");
+
+        assert_eq!(item.amount, 3);
+        assert_eq!(item.ammo, 67);
     }
 }

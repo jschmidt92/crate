@@ -157,6 +157,10 @@ where
         id: id.to_string(),
         value,
     });
+    log::debug_in(
+        table,
+        format_args!("cache save completed; database save queued key={id}"),
+    );
 }
 
 pub(super) fn enqueue_delete(table: &'static str, id: &str) {
@@ -164,6 +168,7 @@ pub(super) fn enqueue_delete(table: &'static str, id: &str) {
         table,
         id: id.to_string(),
     });
+    log::debug_in(table, format_args!("queued database delete key={id}"));
 }
 
 pub(crate) fn upsert_op<T>(

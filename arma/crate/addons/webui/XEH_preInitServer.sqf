@@ -4,7 +4,7 @@ if !(isServer) exitWith {};
 
 [SRPC(webui,bankRequest), {
     params ["_player", "_requestId", "_event", "_data"];
-    [_player, _requestId, _event, _data] call FUNC(handleBankRequest);
+    [_player, _requestId, _event, _data] call FUNC(bankRequest);
 }] call CFUNC(addEventHandler);
 
 [SRPC(webui,refreshBank), {

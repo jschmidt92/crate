@@ -45,8 +45,12 @@ impl Actor {
 
     pub fn apply_snapshot(&mut self, snapshot: ActorSnapshot) {
         self.name = snapshot.name;
-        self.loadout = snapshot.loadout;
-        self.position = snapshot.position;
+        if snapshot.persist_loadout {
+            self.loadout = snapshot.loadout;
+        }
+        if snapshot.persist_position {
+            self.position = snapshot.position;
+        }
         self.direction = snapshot.direction;
         self.stance = snapshot.stance;
         self.rank = snapshot.rank;
@@ -63,8 +67,12 @@ pub struct ActorSnapshot {
     pub name: String,
     #[serde(default)]
     pub loadout: serde_json::Value,
+    #[serde(default = "default_enabled")]
+    pub persist_loadout: bool,
     #[serde(default)]
     pub position: [f64; 3],
+    #[serde(default = "default_enabled")]
+    pub persist_position: bool,
     #[serde(default)]
     pub direction: f64,
     #[serde(default)]
@@ -87,7 +95,9 @@ impl ActorSnapshot {
             uid: uid.into(),
             name: name.into(),
             loadout: serde_json::Value::Array(Vec::new()),
+            persist_loadout: true,
             position: [0.0, 0.0, 0.0],
+            persist_position: true,
             direction: 0.0,
             stance: ActorStance::default(),
             rank: ActorRank::default(),
@@ -164,5 +174,9 @@ fn default_money_amount() -> String {
 }
 
 const fn default_holster() -> bool {
+    true
+}
+
+const fn default_enabled() -> bool {
     true
 }

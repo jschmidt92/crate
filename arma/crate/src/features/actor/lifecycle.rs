@@ -11,6 +11,10 @@ where
     R: ActorRepository,
     E: EventPublisher,
 {
+    pub(crate) fn save_snapshot(&self, snapshot: ActorSnapshot) -> Result<Actor, ActorError> {
+        self.service.save_snapshot(snapshot)
+    }
+
     pub(crate) fn disconnect(&self, snapshot: ActorSnapshot) -> Result<Actor, ActorError> {
         let actor = self.service.disconnect(snapshot)?;
         self.events

@@ -21,7 +21,7 @@
  */
 
 private _defaultConfig = missionConfigFile >> "CfgMission" >> "DefaultOrganization";
-private _startingBank = [_defaultConfig >> "startingBank", "0.00"] call EFUNC(common,getConfigMoney);
+private _startingBank = [_defaultConfig >> "startingBank", "0.00"] call EFUNC(common,configMoney);
 
 private _garageConfig = _defaultConfig >> "VirtualGarage";
 private _virtualGarage = createHashMapFromArray [
@@ -41,7 +41,7 @@ private _virtualLocker = createHashMapFromArray [
     ["backpacks", getArray (_lockerConfig >> "backpacks")]
 ];
 
-["organization:create_default", [_startingBank, toJSON _virtualGarage, toJSON _virtualLocker]] call EFUNC(extension,extCall) params ["_result", "_success"];
+["organization:create_default", [_startingBank, toJSON _virtualGarage, toJSON _virtualLocker]] call EFUNC(extension,call) params ["_result", "_success"];
 if !(_success) exitWith { createHashMap };
 
 private _organization = fromJSON _result;

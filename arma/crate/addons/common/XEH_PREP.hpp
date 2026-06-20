@@ -1,2 +1,2 @@
-PREP(getConfigMoney);
-PREP(getPlayerByUID);
+PREP(configMoney);
+PREP(findPlayer);

@@ -6,9 +6,9 @@ Four implementation cycles were performed on the Commander module, resulting in 
 
 ---
 
-## Round 1 — Code Review (fnc_createCommander.sqf)
+## Round 1 — Code Review (fnc_create.sqf)
 
-13 issues fixed in [fnc_createCommander.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_createCommander.sqf):
+13 issues fixed in [fnc_create.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_create.sqf):
 - **Critical:** Config loading pipeline fixed (was silently discarding mission overrides)
 - **Config format:** Converted [CfgCommander.hpp](file:///g:/forge/arma/crate/addons/commander/CfgCommander.hpp) and mission config to array-of-arrays format
 - **Logic:** Fixed threat distance measurement, selectObjective type safety, spawn slot enforcement, setPosASL→setPosATL, hardcoded BLUFOR class, group leak
@@ -22,7 +22,7 @@ Four implementation cycles were performed on the Commander module, resulting in 
 
 ### [XEH_postInitServer.sqf](file:///g:/forge/arma/crate/addons/commander/XEH_postInitServer.sqf) — Fix #1
 
-Added `!isNil QGVAR(service)` guard to the `waitUntilAndExecute` condition. Previously, if `createCommander` failed, the `start` callback would crash on a nil reference.
+Added `!isNil QGVAR(service)` guard to the `waitUntilAndExecute` condition. Previously, if `create` failed, the `start` callback would crash on a nil reference.
 
 ```diff
  [{
@@ -33,14 +33,14 @@ Added `!isNil QGVAR(service)` guard to the `waitUntilAndExecute` condition. Prev
 
 ---
 
-### [fnc_reassignGroups.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_reassignGroups.sqf) — Fixes #3, #4
+### [fnc_reassign.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_reassign.sqf) — Fixes #3, #4
 
 - Flattened to guard clause (`continue` instead of wrapping body in `if/then`)
 - Added combat behavior: `AWARE`, `NORMAL` speed, `RED` combat mode — groups now engage hostiles while moving to objectives
 
 ---
 
-### [fnc_findEnemySide.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_findEnemySide.sqf) — Fixes #5, #6
+### [fnc_enemySide.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_enemySide.sqf) — Fixes #5, #6
 
 - Added missing side aliases: `"OPFOR"` → `east`, `"INDEPENDENT"` / `"RESISTANCE"` → `resistance`
 - Default now returns `sideUnknown` instead of silently returning `resistance` for invalid inputs
@@ -48,7 +48,7 @@ Added `!isNil QGVAR(service)` guard to the `waitUntilAndExecute` condition. Prev
 
 ---
 
-### [fnc_getObjectivesFallback.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_getObjectivesFallback.sqf) — Fixes #7, #8, #13
+### [fnc_objectives.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_objectives.sqf) — Fixes #7, #8, #13
 
 - Now scans `allMapMarkers` for markers prefixed with `"obj_"` if no well-known names match
 - Fallback positions checked with `surfaceIsWater` to avoid placing objectives in the ocean
@@ -57,7 +57,7 @@ Added `!isNil QGVAR(service)` guard to the `waitUntilAndExecute` condition. Prev
 
 ---
 
-### [fnc_createCommander.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_createCommander.sqf) — Fixes #9, #10, #11, #12, #14
+### [fnc_create.sqf](file:///g:/forge/arma/crate/addons/commander/functions/fnc_create.sqf) — Fixes #9, #10, #11, #12, #14
 
 **New `destroy` method** (#11) — Full cleanup of spawned groups:
 ```sqf

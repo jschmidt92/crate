@@ -89,7 +89,10 @@ async fn worker(config: DatabaseConfig, mut receiver: mpsc::Receiver<WriteOp>) {
         let max_delay_ms = config.reconnect_max_ms.max(delay_ms);
         loop {
             match repository.apply(&op).await {
-                Ok(()) => break,
+                Ok(()) => {
+                    log_applied(&op);
+                    break;
+                }
                 Err(error) => {
                     super::PERSISTENCE_SERVICE
                         .metrics
@@ -101,6 +104,34 @@ async fn worker(config: DatabaseConfig, mut receiver: mpsc::Receiver<WriteOp>) {
                     tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                     repository = connect_with_retry(&config).await;
                     delay_ms = (delay_ms.saturating_mul(2)).min(max_delay_ms);
+                }
+            }
+        }
+    }
+}
+
+fn log_applied(op: &WriteOp) {
+    match op {
+        WriteOp::Upsert { table, id, .. } => {
+            log::debug_in(table, format_args!("database save completed key={id}"));
+        }
+        WriteOp::Delete { table, id } => {
+            log::debug_in(table, format_args!("database delete completed key={id}"));
+        }
+        WriteOp::Batch { ops } => {
+            log::debug(format_args!(
+                "database transaction completed operations={}",
+                ops.len()
+            ));
+            for operation in ops {
+                match operation {
+                    WriteOp::Upsert { table, id, .. } => {
+                        log::debug_in(table, format_args!("transaction save completed key={id}"))
+                    }
+                    WriteOp::Delete { table, id } => {
+                        log::debug_in(table, format_args!("transaction delete completed key={id}"))
+                    }
+                    WriteOp::Batch { .. } => {}
                 }
             }
         }

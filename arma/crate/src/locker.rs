@@ -1,12 +1,16 @@
-use crate::{features::locker::LockerFeature, log, response};
+use crate::{events::ServerEventPublisher, features::locker::LockerFeature, log, response};
 use arma_rs::Group;
 use forge_lib::{models::PlayerLocker, services::LockerService};
 use std::sync::LazyLock;
 
-static LOCKER_FEATURE: LazyLock<LockerFeature<crate::persistence::CachedLockerRepository>> =
-    LazyLock::new(|| {
-        LockerFeature::new(LockerService::new(crate::persistence::locker_repository()))
-    });
+static LOCKER_FEATURE: LazyLock<
+    LockerFeature<crate::persistence::CachedLockerRepository, ServerEventPublisher>,
+> = LazyLock::new(|| {
+    LockerFeature::new(
+        LockerService::new(crate::persistence::locker_repository()),
+        ServerEventPublisher,
+    )
+});
 
 pub fn group() -> Group {
     Group::new()
@@ -50,6 +54,23 @@ pub(crate) fn save_locker(locker_json: String) -> String {
         Ok(locker) => response::json(&locker, "locker"),
         Err(error) => {
             log::error(format_args!("failed to save locker: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn commit_locker(locker_json: String) -> String {
+    let locker = match serde_json::from_str::<PlayerLocker>(&locker_json) {
+        Ok(locker) => locker,
+        Err(error) => {
+            log::error(format_args!("invalid locker commit payload: {error}"));
+            return format!("Error: invalid locker commit payload: {error}");
+        }
+    };
+    match LOCKER_FEATURE.commit_transfer(locker) {
+        Ok(locker) => response::json(&locker, "locker transfer"),
+        Err(error) => {
+            log::error(format_args!("failed to commit locker transfer: {error}"));
             format!("Error: {error}")
         }
     }

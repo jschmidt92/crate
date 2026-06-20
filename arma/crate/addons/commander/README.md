@@ -89,7 +89,7 @@ The Commander is created during server `postInit` using:
 
 ```sqf
 private _overrides = createHashMapFromArray (getArray (missionConfigFile >> "CfgMission" >> "Commander"));
-[_overrides] call forge_commander_fnc_createCommander;
+[_overrides] call forge_commander_fnc_create;
 ```
 
 ### Lifecycle Methods

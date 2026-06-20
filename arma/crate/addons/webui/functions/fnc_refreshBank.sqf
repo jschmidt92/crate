@@ -3,6 +3,9 @@
 /*
  * File: fnc_refreshBank.sqf
  * Author: IDSolutions
+ * Date: 2026-06-20
+ * Last Update: 2026-06-20
+ * Public: No
  *
  * Description:
  * Fetches a fresh bank snapshot for the given player and pushes it
@@ -12,7 +15,7 @@
  * 0: [OBJECT] - Player object
  *
  * Return Value:
- * [BOOL] - true if the push was dispatched
+ * Push dispatched [BOOL]
  *
  * Example:
  * [player] call forge_crate_webui_fnc_refreshBank;
@@ -29,7 +32,7 @@ if (_uid isEqualTo "") exitWith { false };
 
 private _call = {
     params ["_command", "_arguments"];
-    [_command, _arguments] call EFUNC(extension,extCall)
+    [_command, _arguments] call EFUNC(extension,call)
 };
 
 private _parseProfile = {

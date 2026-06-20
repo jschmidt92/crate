@@ -1,5 +1,5 @@
-PREP(handleUIEvents);
-PREP(handleBankRequest);
+PREP(bankRequest);
 PREP(open);
 PREP(refreshBank);
-PREP(sendToBrowser);
+PREP(route);
+PREP(send);

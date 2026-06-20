@@ -27,10 +27,7 @@ where
     pub fn init_or_create(&self, snapshot: ActorSnapshot) -> Result<ActorInitResult, ActorError> {
         validate_snapshot(&snapshot)?;
 
-        if let Some(mut actor) = self.repository.find_by_uid(&snapshot.uid)? {
-            actor.apply_snapshot(snapshot);
-            let actor = self.repository.save(actor)?;
-
+        if let Some(actor) = self.repository.find_by_uid(&snapshot.uid)? {
             return Ok(ActorInitResult {
                 actor,
                 created: false,
@@ -66,7 +63,18 @@ where
     }
 
     pub fn disconnect(&self, snapshot: ActorSnapshot) -> Result<Actor, ActorError> {
-        self.init_or_create(snapshot).map(|result| result.actor)
+        self.save_snapshot(snapshot)
+    }
+
+    pub fn save_snapshot(&self, snapshot: ActorSnapshot) -> Result<Actor, ActorError> {
+        validate_snapshot(&snapshot)?;
+
+        if let Some(mut actor) = self.repository.find_by_uid(&snapshot.uid)? {
+            actor.apply_snapshot(snapshot);
+            return self.repository.save(actor);
+        }
+
+        self.repository.save(Actor::from_snapshot(snapshot))
     }
 }
 
@@ -114,7 +122,7 @@ mod tests {
     }
 
     #[test]
-    fn init_or_create_updates_existing_actor_without_event() {
+    fn init_or_create_returns_existing_actor_without_overwriting_persisted_state() {
         let service = ActorService::new(InMemoryActorRepository::new());
         let mut initial = ActorSnapshot::new("76561198000000000", "Tester");
         initial.organization = "player-owned-org".to_string();
@@ -134,10 +142,52 @@ mod tests {
             .expect("actor should be updated");
 
         assert!(!result.created);
-        assert_eq!(result.actor.name, "Renamed");
+        assert_eq!(result.actor.name, "Tester");
         assert_eq!(result.actor.organization, "player-owned-org");
-        assert_eq!(result.actor.position, [1.0, 2.0, 3.0]);
+        assert_eq!(result.actor.position, [0.0, 0.0, 0.0]);
         assert!(result.events.is_empty());
+    }
+
+    #[test]
+    fn disconnect_updates_existing_actor_from_live_snapshot() {
+        let service = ActorService::new(InMemoryActorRepository::new());
+        service
+            .init_or_create(ActorSnapshot::new("76561198000000000", "Tester"))
+            .expect("actor should be created");
+
+        let mut snapshot = ActorSnapshot::new("76561198000000000", "Renamed");
+        snapshot.position = [1.0, 2.0, 3.0];
+        snapshot.stance = ActorStance::Crouch;
+        let actor = service
+            .disconnect(snapshot)
+            .expect("disconnect snapshot should save");
+
+        assert_eq!(actor.name, "Renamed");
+        assert_eq!(actor.position, [1.0, 2.0, 3.0]);
+        assert_eq!(actor.stance, ActorStance::Crouch);
+    }
+
+    #[test]
+    fn disconnect_preserves_disabled_persistence_fields() {
+        let service = ActorService::new(InMemoryActorRepository::new());
+        let mut initial = ActorSnapshot::new("76561198000000000", "Tester");
+        initial.loadout = serde_json::json!(["saved-loadout"]);
+        initial.position = [10.0, 20.0, 30.0];
+        service
+            .init_or_create(initial)
+            .expect("actor should be created");
+
+        let mut snapshot = ActorSnapshot::new("76561198000000000", "Tester");
+        snapshot.loadout = serde_json::json!(["temporary-loadout"]);
+        snapshot.position = [1.0, 2.0, 3.0];
+        snapshot.persist_loadout = false;
+        snapshot.persist_position = false;
+        let actor = service
+            .disconnect(snapshot)
+            .expect("disconnect snapshot should save");
+
+        assert_eq!(actor.loadout, serde_json::json!(["saved-loadout"]));
+        assert_eq!(actor.position, [10.0, 20.0, 30.0]);
     }
 
     #[test]

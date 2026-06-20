@@ -13,7 +13,7 @@ FUNC(getFuelType) = {
 FUNC(getServiceAmount) = {
     params [["_service", "", [""]], ["_property", "", [""]], ["_default", "0.00", [""]]];
 
-    [missionConfigFile >> "CfgMission" >> "Services" >> _service >> _property, _default] call EFUNC(common,getConfigMoney)
+    [missionConfigFile >> "CfgMission" >> "Services" >> _service >> _property, _default] call EFUNC(common,configMoney)
 };
 
 FUNC(getRefuelPrice) = {

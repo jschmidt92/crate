@@ -5,6 +5,7 @@ pub mod domain_event;
 pub mod fuel;
 pub mod garage;
 pub mod locker;
+pub mod locker_event;
 pub mod notification;
 pub mod organization;
 pub mod organization_event;
@@ -25,6 +26,7 @@ pub use domain_event::DomainEvent;
 pub use fuel::FuelType;
 pub use garage::{Garage, HitPoints, PlayerGarage, Vehicle};
 pub use locker::{Locker, LockerItem, PlayerLocker};
+pub use locker_event::LockerTransferCommitted;
 pub use notification::{AuditAction, AuditRecord, Notification, NotificationKind};
 pub use organization::{
     Organization, OrganizationAction, OrganizationDisband, OrganizationInvite,

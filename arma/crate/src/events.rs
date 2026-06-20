@@ -115,6 +115,9 @@ pub(crate) fn publish(event: DomainEvent) {
 }
 
 pub(crate) fn publish_all(events: &[DomainEvent]) {
+    for event in events {
+        log::debug(format_args!("publishing domain event {}", event.name()));
+    }
     for error in EVENT_BUS.publish_all(events) {
         log::error(format_args!("{error}"));
     }

@@ -1,0 +1,41 @@
+#include "..\script_component.hpp"
+
+/*
+ * File: fnc_init.sqf
+ * Author: IDSolutions
+ * Date: 2026-06-12
+ * Last Update: 2026-06-20
+ * Public: No
+ *
+ * Description:
+ * Initializes the player's owned garage, then continues the player initialization chain.
+ *
+ * Arguments:
+ * 0: [STRING] - Player UID
+ * Return Value:
+ * Garage profile [HASHMAP]
+ *
+ * Example:
+ * [_uid] call forge_crate_garage_fnc_init;
+ */
+
+params [["_uid", "", [""]]];
+
+if (_uid isEqualTo "") exitWith { createHashMap };
+
+["garage:init", [_uid]] call EFUNC(extension,call) params ["_result", "_success"];
+if !(_success) exitWith { createHashMap };
+
+private _garage = fromJSON _result;
+if !(_garage isEqualType createHashMap) exitWith {
+    ERROR_1("Garage init returned invalid payload: %1",_result);
+    createHashMap
+};
+
+private _player = [_uid] call EFUNC(common,findPlayer);
+if !(isNull _player) then {
+    [CRPC(garage,responseInitGarage), [_garage], _player] call CFUNC(targetEvent);
+};
+[SRPC(v_garage,initPlayer), [_uid]] call CFUNC(localEvent);
+
+_garage

@@ -16,6 +16,8 @@ const TABLES: &[&str] = &[
     "organization_invite",
     "v_garage",
     "v_locker",
+    "audit_record",
+    "domain_event",
 ];
 
 pub struct HydratedRecords {
