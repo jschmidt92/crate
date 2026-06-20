@@ -324,5 +324,64 @@ Listen to `"forge_crate_market_marketRequest"` (resolved from the `marketRequest
 }] call CBA_fnc_addEventHandler;
 ```
 
-Using this approach, developers can easily deploy entire sub-apps (such as dynamic vehicle dealerships, persistent lockbox managers, or administrative panels) utilizing the secure, asynchronous bridge established by the framework.
+---
+
+## 6. Architectural Best Practices: Where to Put Domain Logic
+
+You are completely correct to ask about keeping domain logic in its proper place. In the Forge framework, developers have two patterns to choose from when implementing a custom feature:
+
+### Pattern A: Rust-Authoritative (Recommended)
+To keep domain-specific logic completely self-contained and ensure database transactional safety (preventing exploits/dupes), the business rules should reside in the **Rust Extension** (`forge-lib` and `forge-crate`).
+
+1. **SQF Layer (Transport Only)**: Intercepts the player's UI request, packages it, and immediately forwards it to the native extension:
+   ```sqf
+   private _result = ["market:buy", [_uid, _itemId, _price]] call EFUNC(extension,call);
+   ```
+2. **Rust Domain Layer**: The native Rust `market` feature slice validates the transaction (checking configuration price lists, limits, or player database state).
+3. **Cross-Domain Interaction**: Inside Rust, the market service calls `BankService::withdraw_from_account` directly. This debit operation and the database updates are queued/batched in a single secure operation, ensuring **atomicity** (the player cannot get the item if the bank database update fails).
+4. **Domain Event Bus**: The native Rust `EventBus` registers the successful sale, publishing a `market.item_purchased` event which writes audit logs and notification rows in SurrealDB.
+
+> [!TIP]
+> This pattern is highly recommended for complex, server-authoritative components (like persistent garages or virtual lockboxes) to guarantee that item delivery and payment remain transactional and cheat-proof.
+
+### Pattern B: SQF-Delegated (For Scripting-Only Addons)
+If you want to build a lightweight addon using SQF scripts without compiling or modifying the Rust extension, you can handle the gameplay validation in SQF and call the banking commands as a service:
+
+1. **SQF Domain Validation**: Your script handles shop checks (e.g., checking if the player is near a physical shop object, checking vehicle slots, or checking physical inventory space).
+2. **Deducting Funds**: You call the native bank command to withdraw the money:
+   ```sqf
+   (["bank:withdraw", [_uid, _price]] call EFUNC(extension,call)) params ["_result", "_success"];
+   ```
+3. **State Sync**: If the extension returns `_success`, you spawn/give the item to the player.
+
+---
+
+## 7. Extension Event Bus & CBA Hooking
+
+The native Rust extension has a central, compiled `EventBus` that fires when domain actions occur (e.g., `actor.created`, `actor.disconnected`, `organization.payday_issued`).
+
+These events publish durably to SurrealDB and are also dispatched back to the SQF host via the main extension callback bridge (`ExtensionCallback`). The main bridge automatically translates them into **CBA Local Events** on the server using the naming structure:
+
+```text
+forge_crate_<feature>_<callback>
+```
+
+For example, when an organization payday completes:
+1. Rust publishes `DomainEvent::OrganizationPaydayIssued`.
+2. The event is pushed to SQF via the callback bridge.
+3. SQF raises the CBA local event `"forge_crate_organization_payday_issued"` on the server.
+4. Any custom developer addon can listen to this event to spawn notifications, play server-wide announcements, or log custom statistics:
+
+```sqf
+// In your custom server addon:
+["forge_crate_organization_payday_issued", {
+    params ["_eventPayload"];
+    private _orgName = _eventPayload getOrDefault ["name", ""];
+    private _amount = _eventPayload getOrDefault ["amount", 0];
+    
+    // Custom action: play server-wide sound when payday drops
+    [format ["Payday of $%1 has been distributed to %2!", _amount, _orgName]] remoteExec ["systemChat", 0];
+}] call CBA_fnc_addEventHandler;
+```
+
 
