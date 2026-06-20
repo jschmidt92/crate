@@ -122,7 +122,7 @@ export function App() {
                 )}
 
                 {currentPage === "about" && <AboutPage />}
-                {currentPage === "bank" && <BankPage onBack={() => openPage("landing")} />}
+                {currentPage === "bank" && <BankPage />}
             </main>
 
             {showScrollTop && (

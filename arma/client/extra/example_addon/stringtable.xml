@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<Project name="MOD_ACRONYM">
-    <Package name="Addon Name">
-        <Key ID="STR_forge_client_addonName_displayName">
-            <English>Addon Name</English>
-        </Key>
-    </Package>
-</Project>

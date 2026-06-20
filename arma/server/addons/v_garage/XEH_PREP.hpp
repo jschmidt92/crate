@@ -1,2 +1,0 @@
-PREP(disconnectPlayer);
-PREP(initPlayer);

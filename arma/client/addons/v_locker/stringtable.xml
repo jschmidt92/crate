@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project name="forge_client_v_locker">
-    <Package name="v_locker">
-        <Key ID="STR_forge_client_v_locker">
-            <English>Virtual Locker</English>
-        </Key>
-    </Package>
-</Project>

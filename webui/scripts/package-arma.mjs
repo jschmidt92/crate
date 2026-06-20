@@ -6,7 +6,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDir, "..");
 const repoRoot = resolve(projectRoot, "..");
 const distDir = resolve(projectRoot, "dist");
-const targetDir = resolve(repoRoot, "arma/client/addons/webui/ui");
+const targetDir = resolve(repoRoot, "arma/crate/addons/webui/ui");
 const siteDir = resolve(targetDir, "_site");
 
 function findFirstAsset(html, pattern, label) {
@@ -34,8 +34,8 @@ const indexHtml = `<!doctype html>
         <title>Forge</title>
         <script>
             Promise.all([
-                A3API.RequestFile("forge\\\\forge_client\\\\addons\\\\webui\\\\ui\\\\_site\\\\style.css"),
-                A3API.RequestFile("forge\\\\forge_client\\\\addons\\\\webui\\\\ui\\\\_site\\\\script.js"),
+                A3API.RequestFile("forge\\\\forge_crate\\\\addons\\\\webui\\\\ui\\\\_site\\\\style.css"),
+                A3API.RequestFile("forge\\\\forge_crate\\\\addons\\\\webui\\\\ui\\\\_site\\\\script.js"),
             ]).then(([css, js]) => {
                 const style = document.createElement("style");
                 style.textContent = css;

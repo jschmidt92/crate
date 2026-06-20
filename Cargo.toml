@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "arma/server",
+    "arma/crate",
     "lib"
 ]
 resolver = "3"

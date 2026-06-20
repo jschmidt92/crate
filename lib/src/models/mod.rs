@@ -16,7 +16,7 @@ pub mod v_locker;
 pub use actor::{
     Actor, ActorLifeState, ActorRank, ActorSnapshot, ActorStance, ActorStartingConfig,
 };
-pub use actor_event::ActorCreated;
+pub use actor_event::{ActorCreated, ActorDisconnected};
 pub use bank::{
     BankAccount, BankAccountView, BankTransaction, BankTransactionView, Money, MoneyAmount,
     PlayerBankProfile, PlayerBankProfileView,

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="forge_crate_extension">
+    <Package name="extension">
+        <Key ID="STR_forge_crate_extension_displayName">
+            <English>Extension</English>
+        </Key>
+    </Package>
+</Project>

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project name="forge_client_garage">
-    <Package name="garage">
-        <Key ID="STR_forge_client_garage">
-            <English>Garage</English>
-        </Key>
-    </Package>
-</Project>

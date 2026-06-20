@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project name="forge_client_locker">
-    <Package name="locker">
-        <Key ID="STR_forge_client_locker">
-            <English>Locker</English>
-        </Key>
-    </Package>
-</Project>

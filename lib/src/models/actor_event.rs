@@ -13,3 +13,14 @@ impl ActorCreated {
         Self { actor, starting }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActorDisconnected {
+    pub uid: String,
+}
+
+impl ActorDisconnected {
+    pub fn new(uid: impl Into<String>) -> Self {
+        Self { uid: uid.into() }
+    }
+}

@@ -1,0 +1,24 @@
+name = "forge-crate"
+author = "IDSolutions"
+prefix = "forge_crate"
+mainprefix = "forge"
+
+[version]
+path = "addons/main/script_version.hpp"
+git_hash = 0
+
+[files]
+include = [
+    "mod.cpp",
+    "meta.cpp",
+    "logo_forge_crate.png",
+    "logo_forge_crate_over.png",
+    "logo_forge_crate_ca.paa",
+    "logo_forge_crate_over_ca.paa",
+    "LICENSE.md",
+    "README.md"
+]
+exclude = []
+
+[properties]
+author = "IDSolutions"

@@ -16,4 +16,4 @@ The app uses hash routes so local browser-control loading can navigate without a
 - `#/`
 - `#/about`
 
-The normal production build writes static files to `dist/`. The Arma build writes a browser bootstrap to `arma/client/addons/webui/ui/index.html` and copies the compiled stylesheet/script to `ui/_site`. The bootstrap loads those files with `A3API.RequestFile`, which avoids `CT_WEBBROWSER` local-subresource blocking.
+The normal production build writes static files to `dist/`. The Arma build writes a browser bootstrap to `arma/crate/addons/webui/ui/index.html` and copies the compiled stylesheet/script to `ui/_site`. The bootstrap loads those files with `A3API.RequestFile`, which avoids `CT_WEBBROWSER` local-subresource blocking.

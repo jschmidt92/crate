@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="FFE">
+    <Package name="Commander">
+        <Key ID="STR_forge_crate_commander_description">
+            <English>Dynamic enemy AI commander with mission-driven behavior, resource management, and realistic logistic chains.</English>
+        </Key>
+        <Key ID="STR_forge_crate_commander_displayName">
+            <English>Commander</English>
+        </Key>
+    </Package>
+</Project>
