@@ -65,7 +65,7 @@ pub fn load() -> ForgeConfig {
 pub fn path() -> PathBuf {
     env::var_os("FORGE_SERVER_CONFIG")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("config.toml"))
+        .unwrap_or_else(|| PathBuf::from("@forge_crate/config.toml"))
 }
 
 fn default_endpoint() -> String {

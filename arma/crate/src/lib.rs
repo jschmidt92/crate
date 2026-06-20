@@ -50,6 +50,7 @@ pub(crate) static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
 #[arma]
 fn init() -> Extension {
     log::init();
+    pin_extension_module();
     log::info(format_args!("initializing {}", get_version()));
     let config = config::load();
     persistence::init(config.database);
@@ -76,6 +77,36 @@ fn init() -> Extension {
         .group("v_locker", v_locker_group())
         .finish()
 }
+
+#[cfg(windows)]
+fn pin_extension_module() {
+    const GET_MODULE_HANDLE_EX_FLAG_PIN: u32 = 0x0000_0001;
+    const GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS: u32 = 0x0000_0004;
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetModuleHandleExW(flags: u32, module_name: *const u16, module: *mut isize) -> i32;
+    }
+
+    let mut module = 0;
+    let address = pin_extension_module as *const () as *const u16;
+    let pinned = unsafe {
+        GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+            address,
+            &mut module,
+        )
+    };
+
+    if pinned == 0 {
+        log::error(format_args!(
+            "failed to pin extension module for process lifetime"
+        ));
+    }
+}
+
+#[cfg(not(windows))]
+fn pin_extension_module() {}
 
 fn get_status() -> String {
     log::info(format_args!("status requested"));

@@ -1,8 +1,5 @@
 [workspace]
-members = [
-    "arma/crate",
-    "lib"
-]
+members = ["arma/crate", "lib"]
 resolver = "3"
 
 [workspace.dependencies]
@@ -10,6 +7,10 @@ arma-rs = { version = "1.12.1", features = ["chrono", "serde_json", "uuid"] }
 chrono = { version = "0.4.45", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
+sha2 = "0.11.0"
 tokio = { version = "1.52.3", features = ["full"] }
 toml = "1.1.2"
 uuid = { version = "1.23.3", features = ["v4", "serde"] }
+
+[patch.crates-io]
+arma-rs = { path = "vendor/arma-rs" }

@@ -6,6 +6,8 @@ params [
     ["_message", "", [""]]
 ];
 
+diag_log format ['FORGE_UI_EVENTS: control: %1, isConfirmDialog: %2, message: %3', _control, _isConfirmDialog, _message];
+
 if (_message isEqualTo "") exitWith { false };
 
 private _payload = createHashMap;
@@ -16,7 +18,7 @@ if ((_message select [0, 1]) in ["{", "["]) then {
     _parsed = true;
 };
 
-private _event = if (_parsed && {_payload isEqualType createHashMap}) then {
+private _event = if (_parsed && { _payload isEqualType createHashMap }) then {
     _payload getOrDefault ["event", "ui::message"]
 } else {
     "ui::message"
@@ -24,6 +26,15 @@ private _event = if (_parsed && {_payload isEqualType createHashMap}) then {
 
 if (_event isEqualTo "ui::close") exitWith {
     closeDialog 0;
+    true
+};
+
+if ((_event find "bank::") == 0) exitWith {
+    private _requestId = _payload getOrDefault ["requestId", ""];
+    private _data = _payload getOrDefault ["data", createHashMap];
+
+    if (_requestId isEqualTo "" || { isNull player }) exitWith { false };
+    [SRPC(webui,bankRequest), [player, _requestId, _event, _data]] call CFUNC(serverEvent);
     true
 };
 

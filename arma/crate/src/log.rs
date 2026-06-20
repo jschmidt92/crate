@@ -24,6 +24,10 @@ pub fn info(args: std::fmt::Arguments<'_>) {
     write("INFO", args);
 }
 
+pub fn warn(args: std::fmt::Arguments<'_>) {
+    write("WARN", args);
+}
+
 pub fn error(args: std::fmt::Arguments<'_>) {
     write("ERROR", args);
 }
@@ -48,5 +52,5 @@ fn open_log_file() -> Option<File> {
 pub fn path() -> PathBuf {
     env::var_os("FORGE_SERVER_LOG")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("forge_crate.log"))
+        .unwrap_or_else(|| PathBuf::from("@forge_crate/forge_crate.log"))
 }

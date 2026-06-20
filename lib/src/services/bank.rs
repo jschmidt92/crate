@@ -55,6 +55,7 @@ where
             .find_by_uid(uid)?
             .unwrap_or_else(|| PlayerBankProfile::new(uid));
         profile.account.deposit(amount);
+        profile.record_transaction(amount, "Account credit");
 
         Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
     }
@@ -87,7 +88,115 @@ where
         if !profile.account.withdraw(amount) {
             return Err(BankError::InsufficientFunds);
         }
+        profile.record_transaction(Money::from_cents(-amount.cents()), "Account debit");
 
+        Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
+    }
+
+    pub fn deposit_cash_to_account(
+        &self,
+        uid: &str,
+        amount: Money,
+    ) -> Result<PlayerBankProfileView, BankError> {
+        validate_uid(uid)?;
+        if !amount.is_positive() {
+            return Err(BankError::InvalidAmount);
+        }
+
+        let mut profile = self
+            .repository
+            .find_by_uid(uid)?
+            .ok_or(BankError::InsufficientFunds)?;
+        if profile.cash < amount {
+            return Err(BankError::InsufficientCash);
+        }
+
+        profile.cash = profile.cash - amount;
+        profile.account.deposit(amount);
+        profile.record_transaction(amount, "Cash deposit");
+
+        Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
+    }
+
+    pub fn withdraw_cash_from_account(
+        &self,
+        uid: &str,
+        amount: Money,
+    ) -> Result<PlayerBankProfileView, BankError> {
+        validate_uid(uid)?;
+        if !amount.is_positive() {
+            return Err(BankError::InvalidAmount);
+        }
+
+        let mut profile = self
+            .repository
+            .find_by_uid(uid)?
+            .ok_or(BankError::InsufficientFunds)?;
+        if !profile.account.withdraw(amount) {
+            return Err(BankError::InsufficientFunds);
+        }
+
+        profile.cash = profile.cash + amount;
+        profile.record_transaction(Money::from_cents(-amount.cents()), "Cash withdrawal");
+
+        Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
+    }
+
+    pub fn add_pending_earnings(
+        &self,
+        uid: &str,
+        amount: Money,
+    ) -> Result<PlayerBankProfileView, BankError> {
+        validate_uid(uid)?;
+        if !amount.is_positive() {
+            return Err(BankError::InvalidAmount);
+        }
+
+        let mut profile = self
+            .repository
+            .find_by_uid(uid)?
+            .unwrap_or_else(|| PlayerBankProfile::new(uid));
+        profile.pending_earnings = profile.pending_earnings + amount;
+
+        Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
+    }
+
+    pub fn submit_pending_earnings(&self, uid: &str) -> Result<PlayerBankProfileView, BankError> {
+        validate_uid(uid)?;
+        let mut profile = self
+            .repository
+            .find_by_uid(uid)?
+            .ok_or(BankError::InvalidAmount)?;
+        let amount = profile.pending_earnings;
+        if !amount.is_positive() {
+            return Err(BankError::InvalidAmount);
+        }
+
+        profile.pending_earnings = Money::ZERO;
+        profile.account.deposit(amount);
+        profile.record_transaction(amount, "Submitted earnings");
+
+        Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
+    }
+
+    pub fn change_pin(
+        &self,
+        uid: &str,
+        current_pin: &str,
+        new_pin: &str,
+    ) -> Result<PlayerBankProfileView, BankError> {
+        validate_uid(uid)?;
+        validate_pin(new_pin)?;
+
+        let mut profile = self
+            .repository
+            .find_by_uid(uid)?
+            .ok_or(BankError::InvalidActorUid)?;
+        if profile.pin_is_set() && !profile.verify_pin(current_pin) {
+            return Err(BankError::IncorrectPin);
+        }
+
+        profile.set_pin(new_pin);
         Ok(PlayerBankProfileView::from(&self.repository.save(profile)?))
     }
 
@@ -114,15 +223,25 @@ where
         if !from_profile.account.withdraw(amount) {
             return Err(BankError::InsufficientFunds);
         }
+        from_profile.record_transaction(
+            Money::from_cents(-amount.cents()),
+            format!("Transfer to {to_uid}"),
+        );
 
         let mut to_profile = self
             .repository
             .find_by_uid(to_uid)?
             .unwrap_or_else(|| PlayerBankProfile::new(to_uid));
         to_profile.account.deposit(amount);
+        to_profile.record_transaction(amount, format!("Transfer from {from_uid}"));
 
-        let from_profile = self.repository.save(from_profile)?;
-        let to_profile = self.repository.save(to_profile)?;
+        let Ok([from_profile, to_profile]) = <[PlayerBankProfile; 2]>::try_from(
+            self.repository.save_many(vec![from_profile, to_profile])?,
+        ) else {
+            return Err(BankError::Repository(
+                "bank transfer did not persist both profiles".to_string(),
+            ));
+        };
 
         Ok((
             PlayerBankProfileView::from(&from_profile),
@@ -153,6 +272,7 @@ where
                 .find_by_uid(&uid)?
                 .unwrap_or_else(|| PlayerBankProfile::new(&uid));
             profile.account.deposit(amount);
+            profile.record_transaction(amount, "Organization payday");
             profiles.push(profile);
         }
 
@@ -204,6 +324,14 @@ fn validate_uid(uid: &str) -> Result<(), BankError> {
     }
 
     Ok(())
+}
+
+fn validate_pin(pin: &str) -> Result<(), BankError> {
+    if (4..=6).contains(&pin.len()) && pin.bytes().all(|byte| byte.is_ascii_digit()) {
+        Ok(())
+    } else {
+        Err(BankError::InvalidPin)
+    }
 }
 
 fn parse_starting_money(amount: &str) -> Result<Money, BankError> {
@@ -369,6 +497,95 @@ mod tests {
 
         assert_eq!(from.account.balance.as_str(), "75.00");
         assert_eq!(to.account.balance.as_str(), "25.00");
+    }
+
+    #[test]
+    fn cash_deposit_moves_cash_into_account_and_records_ledger() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        service
+            .init_player_account("steam:local-dev", "50.00", "100.00")
+            .expect("account should be created");
+
+        let profile = service
+            .deposit_cash_to_account("steam:local-dev", Money::from_cents(2500))
+            .expect("cash deposit should succeed");
+
+        assert_eq!(profile.cash.as_str(), "25.00");
+        assert_eq!(profile.account.balance.as_str(), "125.00");
+        assert_eq!(profile.transactions[0].description, "Cash deposit");
+        assert_eq!(profile.transactions[0].amount.as_str(), "25.00");
+    }
+
+    #[test]
+    fn cash_withdrawal_moves_account_funds_to_cash() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        service
+            .init_player_account("steam:local-dev", "50.00", "100.00")
+            .expect("account should be created");
+
+        let profile = service
+            .withdraw_cash_from_account("steam:local-dev", Money::from_cents(2500))
+            .expect("cash withdrawal should succeed");
+
+        assert_eq!(profile.cash.as_str(), "75.00");
+        assert_eq!(profile.account.balance.as_str(), "75.00");
+        assert_eq!(profile.transactions[0].amount.as_str(), "-25.00");
+    }
+
+    #[test]
+    fn pending_earnings_submit_to_account() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        service
+            .init_player_account("steam:local-dev", "0.00", "100.00")
+            .expect("account should be created");
+        service
+            .add_pending_earnings("steam:local-dev", Money::from_cents(3400))
+            .expect("earnings should be added");
+
+        let profile = service
+            .submit_pending_earnings("steam:local-dev")
+            .expect("earnings should submit");
+
+        assert_eq!(profile.pending_earnings.as_str(), "0.00");
+        assert_eq!(profile.account.balance.as_str(), "134.00");
+        assert_eq!(profile.transactions[0].description, "Submitted earnings");
+    }
+
+    #[test]
+    fn pin_requires_current_pin_after_initial_setup() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        service
+            .init_player_account("steam:local-dev", "0.00", "100.00")
+            .expect("account should be created");
+
+        let profile = service
+            .change_pin("steam:local-dev", "", "1234")
+            .expect("initial PIN should be set");
+        assert!(profile.pin_set);
+
+        assert!(matches!(
+            service.change_pin("steam:local-dev", "9999", "5678"),
+            Err(BankError::IncorrectPin)
+        ));
+        service
+            .change_pin("steam:local-dev", "1234", "5678")
+            .expect("correct current PIN should permit change");
+    }
+
+    #[test]
+    fn ledger_keeps_only_ten_most_recent_transactions() {
+        let service = BankService::new(InMemoryBankRepository::new());
+        for _ in 0..12 {
+            service
+                .deposit_to_account("steam:local-dev", Money::from_cents(100))
+                .expect("credit should succeed");
+        }
+
+        let profile = service
+            .get_account("steam:local-dev")
+            .expect("read should succeed")
+            .expect("profile should exist");
+        assert_eq!(profile.transactions.len(), 10);
     }
 
     #[test]

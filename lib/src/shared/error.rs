@@ -2,6 +2,9 @@
 pub enum BankError {
     InvalidAmount,
     InvalidActorUid,
+    InvalidPin,
+    IncorrectPin,
+    InsufficientCash,
     InsufficientFunds,
     Repository(String),
 }
@@ -11,6 +14,9 @@ impl std::fmt::Display for BankError {
         match self {
             Self::InvalidAmount => f.write_str("invalid transaction amount"),
             Self::InvalidActorUid => f.write_str("invalid actor uid"),
+            Self::InvalidPin => f.write_str("PIN must contain 4 to 6 digits"),
+            Self::IncorrectPin => f.write_str("current PIN is incorrect"),
+            Self::InsufficientCash => f.write_str("player has insufficient cash"),
             Self::InsufficientFunds => f.write_str("bank account has insufficient funds"),
             Self::Repository(error) => write!(f, "bank repository error: {error}"),
         }

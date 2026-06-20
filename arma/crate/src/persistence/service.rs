@@ -85,6 +85,8 @@ async fn worker(config: DatabaseConfig, mut receiver: mpsc::Receiver<WriteOp>) {
             .queued
             .fetch_sub(1, Ordering::Relaxed);
 
+        let mut delay_ms = config.reconnect_initial_ms.max(1);
+        let max_delay_ms = config.reconnect_max_ms.max(delay_ms);
         loop {
             match repository.apply(&op).await {
                 Ok(()) => break,
@@ -94,10 +96,11 @@ async fn worker(config: DatabaseConfig, mut receiver: mpsc::Receiver<WriteOp>) {
                         .connected
                         .store(false, Ordering::Relaxed);
                     log::error(format_args!(
-                        "surrealdb write failed; reconnecting: {error}"
+                        "surrealdb write failed: {error}; retrying in {delay_ms}ms"
                     ));
+                    tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                     repository = connect_with_retry(&config).await;
-                    hydrate(&repository).await;
+                    delay_ms = (delay_ms.saturating_mul(2)).min(max_delay_ms);
                 }
             }
         }
@@ -134,6 +137,7 @@ async fn connect_with_retry(config: &DatabaseConfig) -> SurrealRepository {
 }
 
 async fn hydrate(repository: &SurrealRepository) {
+    repository.define_tables().await;
     let records = surreal::hydrate(repository).await;
     hydrate_cache(records);
 }

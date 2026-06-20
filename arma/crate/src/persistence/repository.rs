@@ -1,4 +1,4 @@
-use super::{enqueue_delete, enqueue_upsert};
+use super::{enqueue, enqueue_delete, enqueue_upsert, model::WriteOp, upsert_op};
 use forge_lib::models::{Notification, PlayerGarage, PlayerLocker, PlayerVGarage, PlayerVLocker};
 use forge_lib::{
     models::{Actor, Organization, OrganizationInvite, PlayerBankProfile},
@@ -79,6 +79,19 @@ impl BankRepository for CachedBankRepository {
         let profile = self.cache.save(profile)?;
         enqueue_upsert("bank", &profile.uid, &profile);
         Ok(profile)
+    }
+
+    fn save_many(
+        &self,
+        profiles: Vec<PlayerBankProfile>,
+    ) -> Result<Vec<PlayerBankProfile>, BankError> {
+        let mut ops = Vec::with_capacity(profiles.len());
+        for profile in &profiles {
+            self.cache.save(profile.clone())?;
+            ops.push(upsert_op("bank", &profile.uid, profile)?);
+        }
+        enqueue(WriteOp::Batch { ops });
+        Ok(profiles)
     }
 
     fn delete(&self, uid: &str) -> Result<(), BankError> {

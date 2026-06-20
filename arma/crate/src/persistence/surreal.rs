@@ -6,6 +6,18 @@ use forge_lib::models::{
 };
 use surrealdb::{Surreal, engine::remote::ws::Client, engine::remote::ws::Ws, opt::auth::Root};
 
+const TABLES: &[&str] = &[
+    "actor",
+    "bank",
+    "garage",
+    "locker",
+    "notification",
+    "organization",
+    "organization_invite",
+    "v_garage",
+    "v_locker",
+];
+
 pub struct HydratedRecords {
     pub actors: Vec<Actor>,
     pub bank_profiles: Vec<PlayerBankProfile>,
@@ -36,6 +48,20 @@ impl SurrealRepository {
         Ok(Self { db })
     }
 
+    pub async fn define_tables(&self) {
+        let mut sql = String::new();
+        for table in TABLES {
+            sql.push_str(&format!("DEFINE TABLE IF NOT EXISTS {table} SCHEMALESS;\n"));
+        }
+        match self.db.query(sql).await {
+            Ok(_) => log::info(format_args!(
+                "surrealdb tables verified ({} tables)",
+                TABLES.len()
+            )),
+            Err(error) => log::error(format_args!("surrealdb define tables failed: {error}")),
+        }
+    }
+
     pub async fn apply(&self, op: &WriteOp) -> surrealdb::Result<()> {
         match op {
             WriteOp::Upsert { table, id, value } => {
@@ -62,11 +88,13 @@ impl SurrealRepository {
             match op {
                 WriteOp::Upsert { .. } => {
                     sql.push_str(&format!(
-                        "UPSERT type::thing($table{index}, $id{index}) CONTENT $value{index};\n"
+                        "UPSERT type::record($table{index}, $id{index}) CONTENT $value{index};\n"
                     ));
                 }
                 WriteOp::Delete { .. } => {
-                    sql.push_str(&format!("DELETE type::thing($table{index}, $id{index});\n"));
+                    sql.push_str(&format!(
+                        "DELETE type::record($table{index}, $id{index});\n"
+                    ));
                 }
                 WriteOp::Batch { .. } => {}
             }
@@ -121,20 +149,37 @@ where
 {
     let records: surrealdb::Result<Vec<serde_json::Value>> = db.select(table).await;
     match records {
-        Ok(records) => records
-            .into_iter()
-            .filter_map(|value| match serde_json::from_value::<T>(value) {
-                Ok(record) => Some(record),
-                Err(error) => {
-                    log::error(format_args!(
-                        "surrealdb {label} hydrate decode failed: {error}"
-                    ));
-                    None
+        Ok(records) => {
+            let mut items = Vec::with_capacity(records.len());
+            for value in records {
+                match serde_json::from_value::<T>(value) {
+                    Ok(record) => items.push(record),
+                    Err(error) => {
+                        log::warn(format_args!(
+                            "surrealdb {label} hydrate: skipped malformed record: {error}"
+                        ));
+                    }
                 }
-            })
-            .collect(),
+            }
+            if items.is_empty() {
+                log::info(format_args!("surrealdb {label}: no existing records"));
+            } else {
+                log::info(format_args!(
+                    "surrealdb {label}: hydrated {} record(s)",
+                    items.len()
+                ));
+            }
+            items
+        }
         Err(error) => {
-            log::error(format_args!("surrealdb {label} hydrate failed: {error}"));
+            let msg = error.to_string();
+            if msg.contains("does not exist") {
+                log::warn(format_args!(
+                    "surrealdb {label}: table not found, starting empty"
+                ));
+            } else {
+                log::error(format_args!("surrealdb {label} hydrate failed: {error}"));
+            }
             Vec::new()
         }
     }

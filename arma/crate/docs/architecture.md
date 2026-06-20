@@ -40,6 +40,23 @@ flowchart LR
 
 Feature addons subscribe to events such as `forge_crate_refuel_price` instead of adding their own raw `ExtensionCallback` handlers.
 
+Interactive WebUI requests use a separate request/response path because the browser runs on the player's client while authoritative extension state lives on the server:
+
+```mermaid
+sequenceDiagram
+    participant UI as Preact WebUI
+    participant Client as Client SQF
+    participant Server as Server SQF
+    participant Rust as Rust extension
+
+    UI->>Client: A3API.SendAlert request
+    Client->>Server: CBA server event
+    Server->>Rust: extension command
+    Rust-->>Server: JSON snapshot
+    Server-->>Client: targeted CBA response
+    Client-->>UI: ExecJS forgeHostReceive
+```
+
 ## Shared Library
 
 `lib/src/models`

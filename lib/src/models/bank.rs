@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -102,6 +103,12 @@ pub struct PlayerBankProfile {
     pub uid: String,
     pub cash: Money,
     pub account: BankAccount,
+    #[serde(default)]
+    pub pending_earnings: Money,
+    #[serde(default)]
+    pub transactions: Vec<BankTransaction>,
+    #[serde(default)]
+    pin: Option<BankPin>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,6 +116,9 @@ pub struct PlayerBankProfileView {
     pub uid: String,
     pub cash: MoneyAmount,
     pub account: BankAccountView,
+    pub pending_earnings: MoneyAmount,
+    pub pin_set: bool,
+    pub transactions: Vec<BankTransactionView>,
 }
 
 impl From<&PlayerBankProfile> for PlayerBankProfileView {
@@ -117,6 +127,13 @@ impl From<&PlayerBankProfile> for PlayerBankProfileView {
             uid: profile.uid.clone(),
             cash: profile.cash.to_amount(),
             account: BankAccountView::from(&profile.account),
+            pending_earnings: profile.pending_earnings.to_amount(),
+            pin_set: profile.pin.is_some(),
+            transactions: profile
+                .transactions
+                .iter()
+                .map(BankTransactionView::from)
+                .collect(),
         }
     }
 }
@@ -130,6 +147,9 @@ impl PlayerBankProfile {
             uid,
             cash: Money::ZERO,
             account,
+            pending_earnings: Money::ZERO,
+            transactions: Vec::new(),
+            pin: None,
         }
     }
 
@@ -143,6 +163,54 @@ impl PlayerBankProfile {
         profile.account.deposit(bank_balance);
         profile
     }
+
+    pub fn record_transaction(&mut self, amount: Money, description: impl Into<String>) {
+        self.transactions.insert(
+            0,
+            BankTransaction::new(self.uid.clone(), amount, description),
+        );
+        self.transactions.truncate(10);
+    }
+
+    pub fn pin_is_set(&self) -> bool {
+        self.pin.is_some()
+    }
+
+    pub fn verify_pin(&self, pin: &str) -> bool {
+        self.pin
+            .as_ref()
+            .map(|stored| stored.verify(pin))
+            .unwrap_or(false)
+    }
+
+    pub fn set_pin(&mut self, pin: &str) {
+        self.pin = Some(BankPin::new(pin));
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct BankPin {
+    salt: Uuid,
+    hash: String,
+}
+
+impl BankPin {
+    fn new(pin: &str) -> Self {
+        let salt = Uuid::new_v4();
+        Self {
+            salt,
+            hash: hash_pin(salt, pin),
+        }
+    }
+
+    fn verify(&self, pin: &str) -> bool {
+        self.hash == hash_pin(self.salt, pin)
+    }
+}
+
+fn hash_pin(salt: Uuid, pin: &str) -> String {
+    let digest = Sha256::digest(format!("{salt}:{pin}").as_bytes());
+    digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

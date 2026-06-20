@@ -31,7 +31,7 @@ where
         uid: &str,
         amount: Money,
     ) -> Result<PlayerBankProfileView, BankError> {
-        self.service.deposit_to_account(uid, amount)
+        self.service.deposit_cash_to_account(uid, amount)
     }
 
     pub(crate) fn withdraw_from_account(
@@ -39,7 +39,31 @@ where
         uid: &str,
         amount: Money,
     ) -> Result<PlayerBankProfileView, BankError> {
-        self.service.withdraw_from_account(uid, amount)
+        self.service.withdraw_cash_from_account(uid, amount)
+    }
+
+    pub(crate) fn add_pending_earnings(
+        &self,
+        uid: &str,
+        amount: Money,
+    ) -> Result<PlayerBankProfileView, BankError> {
+        self.service.add_pending_earnings(uid, amount)
+    }
+
+    pub(crate) fn submit_pending_earnings(
+        &self,
+        uid: &str,
+    ) -> Result<PlayerBankProfileView, BankError> {
+        self.service.submit_pending_earnings(uid)
+    }
+
+    pub(crate) fn change_pin(
+        &self,
+        uid: &str,
+        current_pin: &str,
+        new_pin: &str,
+    ) -> Result<PlayerBankProfileView, BankError> {
+        self.service.change_pin(uid, current_pin, new_pin)
     }
 
     pub(crate) fn transfer_between_accounts(

@@ -16,7 +16,8 @@ include = [
     "logo_forge_crate_ca.paa",
     "logo_forge_crate_over_ca.paa",
     "LICENSE.md",
-    "README.md"
+    "README.md",
+    "forge_crate_x64.dll"
 ]
 exclude = []
 

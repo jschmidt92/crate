@@ -4,7 +4,7 @@
  */
 
 class CfgMission {
-    Commander [] = {
+    Commander[] = {
         {"reassignCadence", 20},
         {"spawnConsiderCadence", 45},
         {"threatRecalcCadence", 10},

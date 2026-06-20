@@ -39,7 +39,9 @@ Main files:
 - `arma/crate/src/features/bank/*`
 - `arma/crate/src/persistence/payday.rs`
 
-Bank profiles hold player cash and account balances. Player bank-account reads and money movement go through `BankService`. Organization payday still applies the organization debit and recipient bank credits as one queued SurrealDB transaction batch, but recipient bank credits are prepared through `BankService` before persistence batches the writes.
+Bank profiles hold player cash, account balances, pending earnings, a salted ATM PIN hash, and up to ten recent ledger entries. Player bank-account reads and money movement go through `BankService`. Player transfers persist the sender debit and recipient credit in one queued transaction batch. Organization payday applies the organization debit and recipient bank credits the same way, with recipient credits prepared through `BankService` before persistence batches the writes.
+
+The bank WebUI uses a server-authoritative request/response bridge. Browser requests travel through `JSDialog` to SQF, are forwarded to the server, and call the Rust extension using the requesting player's UID. The resulting bank snapshot is returned to that player's browser with `ctrlWebBrowserAction ["ExecJS", ...]`. The UI does not update balances optimistically.
 
 Bank server workflows are organized as:
 
@@ -54,6 +56,9 @@ Current commands:
 - `bank:deposit`
 - `bank:withdraw`
 - `bank:transfer`
+- `bank:add_earnings`
+- `bank:submit_earnings`
+- `bank:change_pin`
 
 ## Garage and Locker
 

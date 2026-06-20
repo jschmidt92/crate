@@ -14,6 +14,9 @@ pub(crate) fn dispatch(command: &str, args: Vec<String>) -> String {
         "bank:deposit" => binary(args, bank::deposit_bank),
         "bank:withdraw" => binary(args, bank::withdraw_bank),
         "bank:transfer" => ternary(args, bank::transfer_bank),
+        "bank:add_earnings" => binary(args, bank::add_earnings),
+        "bank:submit_earnings" => unary(args, bank::submit_earnings),
+        "bank:change_pin" => ternary(args, bank::change_pin),
         "refuel:quote" => ternary(args, refuel::quote),
         "refuel:complete" => quinary(args, refuel::refuel_complete),
         "garage:init" => unary(args, garage::init_garage),
@@ -167,6 +170,34 @@ mod tests {
             !mark_read.starts_with("Error: invalid argument count"),
             "{mark_read}"
         );
+    }
+
+    #[test]
+    fn bank_ui_routes_use_expected_arities() {
+        let earnings = dispatch(
+            "bank:add_earnings",
+            vec!["steam:local-dev".to_string(), "10.00".to_string()],
+        );
+        assert!(
+            !earnings.starts_with("Error: invalid argument count"),
+            "{earnings}"
+        );
+
+        let submit = dispatch("bank:submit_earnings", vec!["steam:local-dev".to_string()]);
+        assert!(
+            !submit.starts_with("Error: invalid argument count"),
+            "{submit}"
+        );
+
+        let pin = dispatch(
+            "bank:change_pin",
+            vec![
+                "steam:local-dev".to_string(),
+                "".to_string(),
+                "1234".to_string(),
+            ],
+        );
+        assert!(!pin.starts_with("Error: invalid argument count"), "{pin}");
     }
 
     #[test]

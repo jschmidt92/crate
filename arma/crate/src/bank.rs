@@ -13,6 +13,9 @@ pub fn group() -> Group {
         .command("deposit", deposit_bank)
         .command("withdraw", withdraw_bank)
         .command("transfer", transfer_bank)
+        .command("add_earnings", add_earnings)
+        .command("submit_earnings", submit_earnings)
+        .command("change_pin", change_pin)
 }
 
 pub(crate) fn init_bank(uid: String, starting_cash: String, starting_bank: String) -> String {
@@ -82,6 +85,40 @@ pub(crate) fn transfer_bank(from_uid: String, to_uid: String, amount: String) ->
             log::error(format_args!(
                 "failed to transfer bank funds from {from_uid} to {to_uid}: {error}"
             ));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn add_earnings(uid: String, amount: String) -> String {
+    let Ok(amount) = parse_amount(&amount) else {
+        return format!("Error: {}", BankError::InvalidAmount);
+    };
+
+    match BANK_FEATURE.add_pending_earnings(&uid, amount) {
+        Ok(profile) => response::json(&profile, "bank profile"),
+        Err(error) => {
+            log::error(format_args!("failed to add earnings for {uid}: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn submit_earnings(uid: String) -> String {
+    match BANK_FEATURE.submit_pending_earnings(&uid) {
+        Ok(profile) => response::json(&profile, "bank profile"),
+        Err(error) => {
+            log::error(format_args!("failed to submit earnings for {uid}: {error}"));
+            format!("Error: {error}")
+        }
+    }
+}
+
+pub(crate) fn change_pin(uid: String, current_pin: String, new_pin: String) -> String {
+    match BANK_FEATURE.change_pin(&uid, &current_pin, &new_pin) {
+        Ok(profile) => response::json(&profile, "bank profile"),
+        Err(error) => {
+            log::error(format_args!("failed to change ATM PIN for {uid}: {error}"));
             format!("Error: {error}")
         }
     }

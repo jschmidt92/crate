@@ -9,7 +9,8 @@ class CfgPatches {
         requiredVersion = REQUIRED_VERSION;
         requiredAddons[] = {
             "forge_crate_main",
-            "forge_crate_common"
+            "forge_crate_common",
+            "forge_crate_extension"
         };
         units[] = {};
         weapons[] = {};
