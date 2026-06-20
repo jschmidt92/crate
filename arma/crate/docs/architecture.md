@@ -87,7 +87,7 @@ Owns the server-level event bus:
 flowchart LR
     Publisher[ServerEventPublisher] --> Bus[EventBus]
     Bus --> Durable[DurableEventBackend]
-    Bus --> Disconnect[Player disconnect handlers]
+    Bus --> Disconnect[Actor disconnect handlers]
     Durable --> EventRows[(domain_event rows)]
     Durable --> AuditRows[(audit rows)]
     Durable --> Notifications[(notification rows)]
@@ -95,7 +95,7 @@ flowchart LR
 
 This is the application event backbone. Feature workflows publish events through `EventPublisher`, and handlers react through the central bus.
 
-Player disconnect is initiated once by the actor SQF addon. After the actor snapshot is saved, the actor feature publishes `actor.disconnected`; independent bank, garage, virtual garage, locker, and virtual locker handlers perform their cleanup through this bus.
+Actor disconnect is initiated once by the actor SQF addon. After the actor snapshot is saved, the actor feature publishes `actor.disconnected`; independent bank, garage, virtual garage, locker, and virtual locker handlers perform their cleanup through this bus.
 
 `arma/crate/src/features`
 

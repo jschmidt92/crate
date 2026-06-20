@@ -24,12 +24,12 @@ Audit and notification records live in:
 
 The server owns one central event bus in `arma/crate/src/events.rs`.
 
-```text
-feature workflow
-  -> EventPublisher
-  -> ServerEventPublisher
-  -> central EventBus
-  -> DomainEventHandler implementations
+```mermaid
+flowchart LR
+    Workflow[Feature workflow] --> Publisher[EventPublisher]
+    Publisher --> Server[ServerEventPublisher]
+    Server --> Bus[Central EventBus]
+    Bus --> Handler[DomainEventHandler implementations]
 ```
 
 At startup, `lib.rs` calls:
@@ -45,19 +45,19 @@ The event bus currently subscribes:
 - garage and virtual-garage actor-disconnect cleanup
 - locker and virtual-locker actor-disconnect cleanup
 
-Player disconnect uses one Arma entry point:
+Actor disconnect uses one Arma entry point:
 
-```text
-Arma HandleDisconnect
-  -> actor:disconnect
-  -> actor snapshot persisted
-  -> actor.disconnected
-  -> central EventBus
-     -> bank cleanup
-     -> garage cleanup
-     -> virtual garage cleanup
-     -> locker cleanup
-     -> virtual locker cleanup
+```mermaid
+flowchart TD
+    Disconnect[Arma HandleDisconnect] --> Command[actor:disconnect]
+    Command --> Persist[Persist actor snapshot]
+    Persist --> Event[actor.disconnected]
+    Event --> Bus[Central EventBus]
+    Bus --> Bank[Bank cleanup]
+    Bus --> Garage[Garage cleanup]
+    Bus --> VGarage[Virtual garage cleanup]
+    Bus --> Locker[Locker cleanup]
+    Bus --> VLocker[Virtual locker cleanup]
 ```
 
 Each handler runs independently. A failed cleanup is logged without preventing the remaining handlers from receiving the event.
@@ -79,6 +79,17 @@ For each domain event, it queues a batch write that may include:
 The queued writes are handled by the persistence worker.
 
 Notification rows are also cached in the server notification repository when the durable backend creates them. This lets SQF fetch newly-created notifications immediately without waiting for the background database writer.
+
+```mermaid
+flowchart LR
+    Event[Domain event] --> Backend[DurableEventBackend]
+    Backend --> Batch[Queued write batch]
+    Backend --> Cache[Notification cache]
+    Batch --> Worker[Persistence worker]
+    Worker --> Database[(SurrealDB)]
+    Cache --> Commands[notification commands]
+    Commands --> SQF[Arma/SQF]
+```
 
 ## Arma/SQF Notification Surface
 
@@ -144,6 +155,7 @@ Feature addons should subscribe to the routed CBA event in their own `XEH_preIni
 Actor:
 
 - `actor.created`
+- `actor.disconnected`
 
 Organization:
 

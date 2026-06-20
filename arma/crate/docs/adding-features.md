@@ -14,6 +14,18 @@ Identify what kind of change you are making:
 
 ## Recommended Flow
 
+```mermaid
+flowchart LR
+    Model[Domain model] --> Repository[Repository trait]
+    Repository --> Service[Domain service]
+    Service --> Slice[Feature slice]
+    Slice --> Command[Command route]
+    Slice --> Event[Domain event]
+    Event --> Durable[Audit and notifications]
+    Command --> Tests[Tests and validation]
+    Durable --> Tests
+```
+
 1. Add or update domain models.
 2. Add or update repository traits if new storage access is needed.
 3. Add or update service methods for validation and core rules.

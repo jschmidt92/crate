@@ -195,6 +195,23 @@ Organization server workflows are organized as vertical slices:
 - Members can leave a player organization and are moved to the default organization.
 - CEOs can kick non-CEO members from a player organization, and kicked members are moved to the default organization.
 
+```mermaid
+flowchart TD
+    Start([Actor initialized]) --> Default[Default organization]
+    Default --> Accept[Accept invite]
+    Accept --> Member[Player organization member]
+    Default --> Create[Create organization]
+    Create --> CEO[Player organization CEO]
+    Member --> Leave[Leave or get kicked]
+    Leave --> MemberFallback[Default organization]
+    Member --> Switch[Accept another invite]
+    Switch --> NewMember[Member of invited organization]
+    CEO --> Disband[Disband organization]
+    Disband --> CEOFallback[Default organization]
+```
+
+The two terminal default-organization nodes represent the same fallback organization. They are shown separately to keep each lifecycle path readable. The CEO has no direct leave transition. Disbanding is the only path from player-organization CEO back to the default organization, and it moves every member with them.
+
 ### Organization Payday
 
 Payday is split into two phases:
@@ -204,6 +221,17 @@ Payday is split into two phases:
 3. `persistence::apply_payday_plan` applies the organization debit and all recipient bank credits as a queued transaction batch.
 
 After the money movement is applied in memory and queued for persistence, the server publishes `OrganizationPaydayIssued`. The durable event backend records the event, an audit row, and recipient notifications.
+
+```mermaid
+flowchart TD
+    Request[Issue payday] --> Validate[Prepare payday plan]
+    Validate --> Credits[Prepare bank credits]
+    Credits --> Transaction[Queue transactional batch]
+    Transaction --> Event[OrganizationPaydayIssued]
+    Event --> Durable[DurableEventBackend]
+    Durable --> Audit[(Audit record)]
+    Durable --> Notifications[(Recipient notifications)]
+```
 
 Current commands:
 
