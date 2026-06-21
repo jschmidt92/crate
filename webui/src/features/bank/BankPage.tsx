@@ -323,11 +323,11 @@ export function BankPage({ theme, toggleTheme }: { theme: "dark" | "light"; togg
                             value={organization?.name ?? "Unavailable"}
                         />
                         <SnapshotItem
-                            label="Your Role"
+                            label="Role"
                             value={organization ? formatRole(role) : "Unavailable"}
                         />
                         <SnapshotItem
-                            label="Vault Funds"
+                            label="Funds"
                             value={formatCurrency(moneyValue(organization?.bank))}
                             featured
                         />

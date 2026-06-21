@@ -54,7 +54,7 @@ if (_event isEqualTo "ui::close") exitWith {
 };
 
 private _parts = _event splitString ":";
-private _namespace = if (count _parts > 0) then { _parts select 0 } else { "" };
+private _namespace = if (_parts isNotEqualTo []) then { _parts select 0 } else { "" };
 
 switch (_namespace) do {
     case "bank": {

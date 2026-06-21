@@ -15,7 +15,7 @@ Main files:
 - Players cannot directly leave the default organization.
 - Players cannot be kicked from the default organization.
 - A player leaves the default organization only by accepting an invite or creating their own player organization.
-- A player can belong to one organization at a time.
+- A player can only belong to one organization at a time.
 - Creating a player organization moves the new CEO out of their previous organization.
 - Accepting an invite moves the player out of their previous organization before adding them to the invited organization.
 - A player organization has one CEO.
