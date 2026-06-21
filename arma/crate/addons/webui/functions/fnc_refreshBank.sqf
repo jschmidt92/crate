@@ -75,5 +75,5 @@ private _response = createHashMapFromArray [
     ["error", ""]
 ];
 
-[CRPC(webui,bankResponse), [_response], _player] call CFUNC(targetEvent);
+[CRPC(webui,response), [_response], _player] call CFUNC(targetEvent);
 true

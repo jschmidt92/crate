@@ -2,7 +2,7 @@
 
 if !(hasInterface) exitWith {};
 
-[CRPC(webui,bankResponse), {
+[CRPC(webui,response), {
     params ["_response"];
     [_response] call FUNC(send);
 }] call CFUNC(addEventHandler);

@@ -25,7 +25,7 @@ sequenceDiagram
     C_SQF->>S_SQF: CBA Server RPC [forge_crate_webui_bankRequest]
     S_SQF->>Rust: Rust Native Command (e.g. bank:deposit)
     Rust-->>S_SQF: JSON state snapshot
-    S_SQF-->>C_SQF: CBA Client RPC [forge_crate_webui_bankResponse]
+    S_SQF-->>C_SQF: CBA Client RPC [forge_crate_webui_response]
     C_SQF-->>JS: ctrlWebBrowserAction ["ExecJS", "forgeHostReceive(...)"]
 ```
 
@@ -176,7 +176,7 @@ Under the hood, events are generated via macro formatting. The fully resolved CB
 | :--- | :--- | :--- |
 | `"forge_crate_bank_openRequested"` | Client | Dispatched to request the browser interface to open. |
 | `"forge_crate_webui_bankRequest"` | Server RPC | Fired by client SQF when a browser makes a request. |
-| `"forge_crate_webui_bankResponse"` | Client RPC | Fired by server SQF when returning results or pushing updates to a player's browser. |
+| `"forge_crate_webui_response"` | Client RPC | Fired by server SQF when returning results or pushing updates to a player's browser. |
 | `"forge_crate_webui_refreshBank"` | Server RPC | Requests the server to fetch and push a fresh bank statement to a player client. |
 
 ### Intercepting Bank Requests on the Server
@@ -208,7 +208,7 @@ You can listen to incoming bank requests to add custom verification, deduct proc
                 ["error", "Security alert: Transfers over $50,000 require Colonel rank."]
             ];
             // Send back to the client and abort further execution
-            ["forge_crate_webui_bankResponse", [_errorResponse], _player] call CBA_fnc_targetEvent;
+            ["forge_crate_webui_response", [_errorResponse], _player] call CBA_fnc_targetEvent;
         };
     };
 }] call CBA_fnc_addEventHandler;
@@ -219,7 +219,7 @@ You can trigger sound effects, custom notification toasts, or UI updates in-game
 
 ```sqf
 // Client-side script:
-["forge_crate_webui_bankResponse", {
+["forge_crate_webui_response", {
     params ["_response"];
     private _event = _response getOrDefault ["event", ""];
     private _ok = _response getOrDefault ["ok", false];
@@ -318,7 +318,7 @@ Listen to `"forge_crate_market_marketRequest"` (resolved from the `marketRequest
             ];
             
             // 3. Dispatch response back to the player client (uses standard client event bridge)
-            ["forge_crate_webui_bankResponse", [_response], _player] call CBA_fnc_targetEvent;
+            ["forge_crate_webui_response", [_response], _player] call CBA_fnc_targetEvent;
         };
     };
 }] call CBA_fnc_addEventHandler;
@@ -377,7 +377,7 @@ The market addon listens for client UI requests, performs physical game-world va
                 ["requestId", _requestId], ["event", _event], ["ok", false], ["data", createHashMap],
                 ["error", "This item is currently out of stock."]
             ];
-            ["forge_crate_webui_bankResponse", [_errorResponse], _player] call CBA_fnc_targetEvent;
+            ["forge_crate_webui_response", [_errorResponse], _player] call CBA_fnc_targetEvent;
         };
 
         // 2. Request money deduction via the event bus (Market doesn't care how bank stores or processes it)
@@ -409,7 +409,7 @@ The market addon listens for client UI requests, performs physical game-world va
         private _response = createHashMapFromArray [
             ["requestId", _requestId], ["event", _uiEvent], ["ok", true], ["data", createHashMap], ["error", ""]
         ];
-        ["forge_crate_webui_bankResponse", [_response], _player] call CBA_fnc_targetEvent;
+        ["forge_crate_webui_response", [_response], _player] call CBA_fnc_targetEvent;
     };
 }] call CBA_fnc_addEventHandler;
 
@@ -425,7 +425,7 @@ The market addon listens for client UI requests, performs physical game-world va
         private _response = createHashMapFromArray [
             ["requestId", _requestId], ["event", _uiEvent], ["ok", false], ["data", createHashMap], ["error", _errorMsg]
         ];
-        ["forge_crate_webui_bankResponse", [_response], _player] call CBA_fnc_targetEvent;
+        ["forge_crate_webui_response", [_response], _player] call CBA_fnc_targetEvent;
     };
 }] call CBA_fnc_addEventHandler;
 ```

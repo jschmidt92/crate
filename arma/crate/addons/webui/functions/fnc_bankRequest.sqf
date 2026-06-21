@@ -155,5 +155,5 @@ if (_event != "bank::load" && {_success}) then {
     };
 };
 
-[CRPC(webui,bankResponse), [_response], _player] call CFUNC(targetEvent);
+[CRPC(webui,response), [_response], _player] call CFUNC(targetEvent);
 true
