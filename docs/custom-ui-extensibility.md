@@ -1,6 +1,6 @@
 # Custom UI/UX Integration & Extensibility Developer Guide
 
-One of the core design goals of the Forge framework is **extensibility**. Developers do not need to modify the core codebase or framework sources to customize the user interface or add new features. 
+One of the core design goals of the Forge framework is **extensibility**. Developers do not need to modify the core codebase or framework sources to customize the user interface or add new features.
 
 The framework uses an event-driven architecture that decouples the frontend UI representation, the client-side/server-side Arma (SQF) scripting layer, and the native Rust backend state. This document details how to build a custom UI, interface with the Arma browser control, and hook into framework events.
 
@@ -8,7 +8,7 @@ The framework uses an event-driven architecture that decouples the frontend UI r
 
 ## 1. WebUI Architecture Overview
 
-The Forge UI operates in a Chromium Embedded Framework (CEF) host provided by Arma 3's HTML browser control (`CT_WEBBROWSER`). 
+The Forge UI operates in a Chromium Embedded Framework (CEF) host provided by Arma 3's HTML browser control (`CT_WEBBROWSER`).
 
 ### The Async Communication Loop
 
@@ -36,7 +36,7 @@ sequenceDiagram
 Developers can build a custom UI using any modern web technology (Preact, React, Vue, Svelte, or vanilla HTML/JS/CSS) and bundle it.
 
 ### Web-to-Arma Requests (JavaScript)
-To query the game state or initiate transactions from your frontend, serialize your request as a JSON string and call `window.A3API.SendAlert`. 
+To query the game state or initiate transactions from your frontend, serialize your request as a JSON string and call `window.A3API.SendAlert`.
 
 Your payload should include:
 - `requestId`: A unique identifier (e.g., timestamp + counter) to correlate the asynchronous response.
@@ -99,7 +99,7 @@ window.forgeHostReceive = (response) => {
         if (pending) {
             window.clearTimeout(pending.timeout);
             window.pendingRequests.delete(response.requestId);
-            
+
             if (response.ok) {
                 pending.resolve(response.data);
             } else {
@@ -186,12 +186,12 @@ You can listen to incoming bank requests to add custom verification, deduct proc
 // Server-side script:
 ["forge_crate_webui_bankRequest", {
     params ["_player", "_requestId", "_event", "_data"];
-    
+
     // Log player banking requests
-    diag_log format ["[AUDIT] Player %1 (%2) requested: %3 with data: %4", 
-        name _player, 
-        getPlayerUID _player, 
-        _event, 
+    diag_log format ["[AUDIT] Player %1 (%2) requested: %3 with data: %4",
+        name _player,
+        getPlayerUID _player,
+        _event,
         _data
     ];
 
@@ -233,7 +233,7 @@ You can trigger sound effects, custom notification toasts, or UI updates in-game
 
 ## 5. Adding New Custom Events to the Bridge
 
-You can extend the interface to support operations outside of banking (e.g., custom garages, item markets, lockboxes). 
+You can extend the interface to support operations outside of banking (e.g., custom garages, item markets, lockboxes).
 
 ### How Event Routing Works
 The client-side event router `fnc_route.sqf` evaluates incoming events. Local client-side operations (like `"ui::close"`) are matched immediately at the beginning via a fast `exitWith` block. This bypasses any string allocation or array splitting for local UI calls. Other events fall through, are split by the `:` delimiter to extract their **namespace**, and are routed via a switch statement on `_namespace`:
@@ -297,17 +297,17 @@ Listen to `"forge_crate_market_marketRequest"` (resolved from the `marketRequest
 // Server-side custom addon init:
 ["forge_crate_market_marketRequest", {
     params ["_player", "_requestId", "_event", "_data"];
-    
+
     switch (_event) do {
         case "market::buy": {
             private _itemId = _data getOrDefault ["itemId", ""];
             private _price = _data getOrDefault ["price", 99999];
-            
+
             // 1. Process custom game logic (e.g., inventory space check and bank check)
             // Behind the scenes, my_mod_fnc_processPurchase calls the Rust extension
             // or bank commands to withdraw the price from the player's account.
             private _success = [_player, _itemId, _price] call my_mod_fnc_processPurchase;
-            
+
             // 2. Prepare client response
             private _response = createHashMapFromArray [
                 ["requestId", _requestId],
@@ -316,7 +316,7 @@ Listen to `"forge_crate_market_marketRequest"` (resolved from the `marketRequest
                 ["data", createHashMapFromArray [["itemId", _itemId], ["status", "delivered"]]],
                 ["error", if (_success) then { "" } else { "Insufficient funds or inventory space." }]
             ];
-            
+
             // 3. Dispatch response back to the player client (uses standard client event bridge)
             ["forge_crate_webui_response", [_response], _player] call CBA_fnc_targetEvent;
         };
@@ -339,13 +339,13 @@ sequenceDiagram
     participant UI as Web UI
     participant Market as Market Addon
     participant Bank as Bank Addon
-    
+
     UI->>Market: Action: market::buy
     Market->>Market: Verify item stock
     Market->>Bank: Emit: forge_crate_bank_deductRequested
     Bank->>Bank: Deduct balance (Rust)
     Bank->>Market: Emit: forge_crate_bank_deductSucceeded / failed
-    
+
     Note over Market,Bank: Payment Succeeded Path
     Market->>Market: Unlock item in Locker & Arsenal
     Market-->>UI: Response: Purchase success
@@ -373,7 +373,10 @@ The market addon listens for client UI requests, performs physical game-world va
         private _inStock = [_itemId] call my_mod_fnc_checkMarketStock;
         if (!_inStock) exitWith {
             private _errorResponse = createHashMapFromArray [
-                ["requestId", _requestId], ["event", _event], ["ok", false], ["data", createHashMap],
+                ["requestId", _requestId],
+                ["event", _event],
+                ["ok", false],
+                ["data", createHashMap],
                 ["error", "This item is currently out of stock."]
             ];
             ["forge_crate_webui_response", [_errorResponse], _player] call CBA_fnc_targetEvent;
@@ -398,7 +401,7 @@ The market addon listens for client UI requests, performs physical game-world va
     private _requestId = _txPayload getOrDefault ["requestId", ""];
     private _uiEvent = _txPayload getOrDefault ["uiEvent", ""];
     private _itemId = _txPayload getOrDefault ["itemId", ""];
-    
+
     // Check if this was a market purchase transaction
     if (_uiEvent isEqualTo "market::buy") then {
         // Fulfill the transaction: deliver directly to locker & unlock in Virtual Arsenal
@@ -406,7 +409,11 @@ The market addon listens for client UI requests, performs physical game-world va
 
         // Respond to the UI
         private _response = createHashMapFromArray [
-            ["requestId", _requestId], ["event", _uiEvent], ["ok", true], ["data", createHashMap], ["error", ""]
+            ["requestId", _requestId],
+            ["event", _uiEvent],
+            ["ok", true],
+            ["data", createHashMap],
+            ["error", ""]
         ];
         ["forge_crate_webui_response", [_response], _player] call CBA_fnc_targetEvent;
     };
@@ -422,7 +429,11 @@ The market addon listens for client UI requests, performs physical game-world va
 
     if (_uiEvent isEqualTo "market::buy") then {
         private _response = createHashMapFromArray [
-            ["requestId", _requestId], ["event", _uiEvent], ["ok", false], ["data", createHashMap], ["error", _errorMsg]
+            ["requestId", _requestId],
+            ["event", _uiEvent],
+            ["ok", false],
+            ["data", createHashMap],
+            ["error", _errorMsg]
         ];
         ["forge_crate_webui_response", [_response], _player] call CBA_fnc_targetEvent;
     };
@@ -452,35 +463,5 @@ The bank addon does not know about weapons, markets, or shops. It only listens f
         _txPayload set ["error", _bankResult];
         ["forge_crate_bank_deductFailed", _txPayload] call CBA_fnc_localEvent;
     };
-}] call CBA_fnc_addEventHandler;
-```
-
----
-
-## 7. Extension Event Bus & CBA Hooking
-
-The native Rust extension has a central, compiled `EventBus` that fires when core domain actions occur (e.g., `actor.created`, `actor.disconnected`, `organization.payday_issued`).
-
-These events publish durably to SurrealDB and are also dispatched back to the SQF host via the main extension callback bridge (`ExtensionCallback`). The main bridge automatically translates them into **CBA Local Events** on the server using the naming structure:
-
-```text
-forge_crate_<feature>_<callback>
-```
-
-For example, when an organization payday completes:
-1. Rust publishes `DomainEvent::OrganizationPaydayIssued`.
-2. The event is pushed to SQF via the callback bridge.
-3. SQF raises the CBA local event `"forge_crate_organization_payday_issued"` on the server.
-4. Any custom developer addon can listen to this event to spawn notifications, play server-wide announcements, or log custom statistics:
-
-```sqf
-// In your custom server addon:
-["forge_crate_organization_payday_issued", {
-    params ["_eventPayload"];
-    private _orgName = _eventPayload getOrDefault ["name", ""];
-    private _amount = _eventPayload getOrDefault ["amount", 0];
-    
-    // Custom action: play server-wide sound when payday drops
-    [format ["Payday of $%1 has been distributed to %2!", _amount, _orgName]] remoteExec ["systemChat", 0];
 }] call CBA_fnc_addEventHandler;
 ```
