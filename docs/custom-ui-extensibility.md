@@ -369,12 +369,13 @@ The market addon listens for client UI requests, performs physical game-world va
         private _itemId = _data getOrDefault ["itemId", ""];
         private _price = _data getOrDefault ["price", 99999];
 
-        // 1. Validate gameplay logic locally (e.g., inventory space or stock limits)
-        private _hasSpace = [_player, _itemId] call my_mod_fnc_checkInventorySpace;
-        if (!_hasSpace) exitWith {
+        // 1. Validate gameplay rules (e.g., check stock levels or player level)
+        // (Note: No player inventory space checks are needed since purchases go to the locker by default)
+        private _inStock = [_itemId] call my_mod_fnc_checkMarketStock;
+        if (!_inStock) exitWith {
             private _errorResponse = createHashMapFromArray [
                 ["requestId", _requestId], ["event", _event], ["ok", false], ["data", createHashMap],
-                ["error", "Your inventory does not have enough space."]
+                ["error", "This item is currently out of stock."]
             ];
             ["forge_crate_webui_bankResponse", [_errorResponse], _player] call CBA_fnc_targetEvent;
         };
@@ -384,7 +385,8 @@ The market addon listens for client UI requests, performs physical game-world va
             ["player", _player],
             ["requestId", _requestId],
             ["uiEvent", _event],
-            ["amount", _price]
+            ["amount", _price],
+            ["itemId", _itemId] // pass item details along in the transaction payload
         ];
         ["forge_crate_bank_deductRequested", _txPayload] call CBA_fnc_localEvent;
     };
@@ -396,11 +398,12 @@ The market addon listens for client UI requests, performs physical game-world va
     private _player = _txPayload getOrDefault ["player", objNull];
     private _requestId = _txPayload getOrDefault ["requestId", ""];
     private _uiEvent = _txPayload getOrDefault ["uiEvent", ""];
+    private _itemId = _txPayload getOrDefault ["itemId", ""];
     
     // Check if this was a market purchase transaction
     if (_uiEvent isEqualTo "market::buy") then {
-        // Fulfill the transaction: give player the item
-        [_player] call my_mod_fnc_givePurchasedItem;
+        // Fulfill the transaction: deliver directly to locker & unlock in Virtual Arsenal
+        [_player, _itemId] call my_mod_fnc_deliverToLockerAndArsenal;
 
         // Respond to the UI
         private _response = createHashMapFromArray [
