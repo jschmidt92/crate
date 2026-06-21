@@ -337,22 +337,21 @@ Instead of direct coupling, we utilize the **CBA Event Bus** to orchestrate the 
 ```mermaid
 sequenceDiagram
     participant UI as Web UI
-    participant M as Market Addon
-    participant B as Bank Addon
+    participant Market as Market Addon
+    participant Bank as Bank Addon
     
-    UI->>M: Action: market::buy
-    M->>M: Validate inventory & stock
-    Note over M,B: Decoupled Event Boundary
-    M->>B: Emit: forge_crate_bank_deductRequested
-    B->>B: Validate & deduct balance (Rust)
-    B->>M: Emit: forge_crate_bank_deductSucceeded / failed
-    Note over M,B: Decoupled Event Boundary
-    alt payment succeeded
-        M->>M: Add item to player unit
-        M-->>UI: Return: Purchase success!
-    else payment failed
-        M-->>UI: Return: Purchase failed error
-    end
+    UI->>Market: Action: market::buy
+    Market->>Market: Verify item stock
+    Market->>Bank: Emit: forge_crate_bank_deductRequested
+    Bank->>Bank: Deduct balance (Rust)
+    Bank->>Market: Emit: forge_crate_bank_deductSucceeded / failed
+    
+    Note over Market,Bank: Payment Succeeded Path
+    Market->>Market: Unlock item in Locker & Arsenal
+    Market-->>UI: Response: Purchase success
+
+    Note over Market,Bank: Payment Failed Path
+    Market-->>UI: Response: Purchase failed error
 ```
 
 ### Implementing Decoupled Features in SQF
