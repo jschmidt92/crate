@@ -1,114 +1,118 @@
 # Events, Audit, and Notifications
 
-The Rust server uses domain events for cross-cutting side effects such as durable audit rows and notifications.
+Forge has two related event systems:
 
-## Core Types
+- Rust domain events for server/application reactions.
+- CBA events for SQF coordination and network RPC.
 
-Shared event code lives in `lib/src/events`.
+They solve different problems and are not interchangeable.
 
-- `DomainEventHandler`: trait for subscribers.
-- `EventBus`: dispatches events to registered handlers.
-- `EventPublisher`: interface used by feature workflows.
+## Rust Domain Events
 
-Domain events live in `lib/src/models`:
+Shared interfaces:
 
-- `domain_event.rs`: central `DomainEvent` enum.
-- `actor_event.rs`: actor event payloads.
-- `organization_event.rs`: organization event payloads.
+```text
+lib/src/events/
+```
 
-Audit and notification records live in:
+- `EventPublisher`
+- `EventBus`
+- `DomainEventHandler`
 
-- `notification.rs`
+Server wiring:
 
-## Server Event Backbone
-
-The server owns one central event bus in `arma/crate/src/events.rs`.
+```text
+arma/crate/src/events.rs
+```
 
 ```mermaid
 flowchart LR
-    Workflow[Feature workflow] --> Publisher[EventPublisher]
-    Publisher --> Server[ServerEventPublisher]
-    Server --> Bus[Central EventBus]
-    Bus --> Handler[DomainEventHandler implementations]
+    Feature[Feature workflow] --> Publisher[EventPublisher]
+    Publisher --> Bus[Central EventBus]
+    Bus --> Durable[DurableEventBackend]
+    Bus --> Lifecycle[Cross-domain lifecycle handlers]
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef backbone fill:#2a2113,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Feature,Publisher,Durable,Lifecycle step
+    class Bus backbone
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
-At startup, `lib.rs` calls:
+Events describe completed facts. Validation and mutation happen before publication.
 
-```rust
-events::init();
-```
+## Current Domain Events
 
-The event bus currently subscribes:
+| Event name | Purpose |
+| --- | --- |
+| `actor.created` | New actor was created with starting configuration. |
+| `actor.disconnected` | Actor snapshot was saved during disconnect. |
+| `locker.transfer_committed` | Locker transfer completed after actor persistence succeeded. |
+| `organization.created` | Player organization was created. |
+| `organization.disbanded` | Player organization was disbanded and members reassigned. |
+| `organization.invite_created` | Invite was created. |
+| `organization.invite_accepted` | Invite was accepted. |
+| `organization.invite_declined` | Invite was declined. |
+| `organization.member_left` | Member left for the default organization. |
+| `organization.member_kicked` | Member was kicked to the default organization. |
+| `organization.payday_issued` | Organization payday completed. |
 
-- `persistence::DurableEventBackend`
-- bank actor-disconnect cleanup
-- garage and virtual-garage actor-disconnect cleanup
-- locker and virtual-locker actor-disconnect cleanup
-
-Actor disconnect uses one Arma entry point:
+## Actor Lifecycle Fan-Out
 
 ```mermaid
 flowchart TD
-    Disconnect[Arma HandleDisconnect] --> Command[actor:disconnect]
-    Command --> Persist[Persist actor snapshot]
-    Persist --> Event[actor.disconnected]
-    Event --> Bus[Central EventBus]
+    Disconnect[Arma HandleDisconnect] --> Snapshot[Save actor snapshot]
+    Snapshot --> Event[actor.disconnected]
+    Event --> Bus[EventBus]
     Bus --> Bank[Bank cleanup]
     Bus --> Garage[Garage cleanup]
     Bus --> VGarage[Virtual garage cleanup]
     Bus --> Locker[Locker cleanup]
     Bus --> VLocker[Virtual locker cleanup]
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef backbone fill:#2a2113,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Disconnect,Snapshot,Event,Bank,Garage,VGarage,Locker,VLocker step
+    class Bus backbone
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
-Each handler runs independently. A failed cleanup is logged without preventing the remaining handlers from receiving the event.
+Handlers are independent. One failure is logged and does not prevent later handlers from running.
 
-Locker close uses correlated CBA events to save actor state before locker state without either domain handling the other's payload. After the locker save succeeds, Rust publishes `locker.transfer_committed`. The durable event backend records the event and a compact audit entry containing the player UID, distinct classname count, and total item quantity.
+## Durable Backend
 
-## Durable Event Backend
-
-The durable backend lives in:
+Location:
 
 ```text
 arma/crate/src/persistence/durable_events.rs
 ```
 
-For each domain event, it queues a batch write that may include:
-
-- one `domain_event` record containing the raw event payload.
-- one `audit_record` if the event is auditable.
-- one or more `notification` records if players should be notified.
-
-The queued writes are handled by the persistence worker.
-
-Notification rows are also cached in the server notification repository when the durable backend creates them. This lets SQF fetch newly-created notifications immediately without waiting for the background database writer.
+The handler serializes events and conditionally creates audits and notifications.
 
 ```mermaid
 flowchart LR
-    Event[Domain event] --> Backend[DurableEventBackend]
-    Backend --> Batch[Queued write batch]
+    Event --> Backend
     Backend --> Cache[Notification cache]
-    Batch --> Worker[Persistence worker]
-    Worker --> Database[(SurrealDB)]
-    Cache --> Commands[notification commands]
-    Commands --> SQF[Arma/SQF]
+    Backend --> Batch[WriteOp batch]
+    Batch --> DB[(SurrealDB)]
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef storage fill:#121214,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Event,Backend,Cache,Batch step
+    class DB storage
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
-## Arma/SQF Notification Surface
+## Notification Surface
 
-The Rust extension exposes these notification commands:
+Extension commands:
 
 - `notification:list`
 - `notification:unread`
 - `notification:mark_read`
 - `notification:mark_all_read`
 
-The server SQF addon wraps those commands in:
-
-```text
-arma/crate/addons/notification/functions
-```
-
-Current helper functions:
+SQF wrappers:
 
 - `forge_crate_notification_fnc_list`
 - `forge_crate_notification_fnc_unread`
@@ -116,89 +120,49 @@ Current helper functions:
 - `forge_crate_notification_fnc_markAllRead`
 - `forge_crate_notification_fnc_deliver`
 
-`deliver` fetches unread notifications for a player and sends them to that player with `systemChat`. The bank player-init flow calls it after bank initialization and marks displayed notifications read, so players do not see the same join-time notifications repeatedly. A later UI can replace `deliver` with a custom inbox while keeping the same Rust command surface.
+Current join-time delivery uses `systemChat`, then marks displayed notifications read.
 
-## Arma Extension Callbacks
+## CBA Events
 
-SQF extension callbacks are registered once in:
+CBA events coordinate SQF modules and network boundaries.
 
-```text
-arma/crate/addons/main/XEH_preInitServer.sqf
-```
+Examples:
 
-The handler accepts Forge-owned callback namespaces:
+- bank terminal publishes `forge_crate_bank_openRequested`.
+- WebUI sends `forge_crate_webui_bankRequest` to the server.
+- server targets `forge_crate_webui_response` back to one client.
+- locker requests `forge_crate_actor_saveRequested` and correlates the result.
 
-- `forge:<feature>` for new callback producers.
+These names are generated by addon macros; see [SQF Addons](sqf-addons.md).
 
-The callback payload is parsed with `fromJSON` when it looks like a JSON object or array. The bridge then emits a server-local CBA event named:
+## Native Extension Callbacks
 
-```text
-forge_crate_<feature>_<callback>
-```
+One raw callback handler is registered by the `main` addon.
 
-For example, this extension callback:
-
-```text
-name = "forge:refuel"
-function = "price"
-data = "[...]"
-```
-
-becomes this SQF event:
+Rust callback namespaces beginning with `forge:` are converted into CBA events:
 
 ```text
-forge_crate_refuel_price
+forge:<feature> + <function>
+    -> forge_crate_<feature>_<function>
 ```
 
-Feature addons should subscribe to the routed CBA event in their own `XEH_preInitServer.sqf`. They should not add separate raw `ExtensionCallback` handlers unless a callback uses a different non-Forge protocol.
+Feature addons should subscribe to the routed CBA event.
 
-## Current Events
+## Adding a Domain Event
 
-Actor:
+1. Add the payload to a domain-specific event model.
+2. Add the `DomainEvent` variant.
+3. Add the stable event name.
+4. Export the payload.
+5. Publish from the feature workflow after success.
+6. Add event handlers for cross-cutting reactions.
+7. Add durable audit/notification mapping when required.
+8. Test the event name and handler behavior.
 
-- `actor.created`
-- `actor.disconnected`
+## Event Rules
 
-Organization:
-
-- `organization.created`
-- `organization.disbanded`
-- `organization.invite_created`
-- `organization.invite_accepted`
-- `organization.invite_declined`
-- `organization.member_left`
-- `organization.member_kicked`
-- `organization.payday_issued`
-
-## Publishing Events
-
-Feature workflows should publish through the `EventPublisher` interface.
-
-Example pattern:
-
-```rust
-let organization = self.service.create_player_org(id, name, ceo_uid)?;
-self.events.publish(DomainEvent::OrganizationCreated(
-    OrganizationCreated::new(OrganizationView::from(&organization), ceo_uid),
-));
-```
-
-Command modules should not publish directly unless they are truly the workflow owner. Prefer keeping event publication inside `features`.
-
-## Adding a New Event
-
-1. Add the event payload to a domain-specific event file, such as `organization_event.rs`.
-2. Add a variant to `DomainEvent` in `domain_event.rs`.
-3. Add the event name in `DomainEvent::name`.
-4. Export the payload from `models/mod.rs`.
-5. Publish it from the relevant feature workflow through `EventPublisher`.
-6. Add durable side effects in `persistence/durable_events.rs` if audit or notification rows are needed.
-7. Add tests around the service or feature workflow behavior.
-
-## Design Guidelines
-
-- Events should describe something that already happened.
-- Do not use an event to ask permission.
-- Validate and mutate domain state first, then publish the event.
-- Keep durable side effects in event handlers.
-- Keep core domain logic out of event handlers.
+- Events are past tense facts, not permission requests.
+- Core rules stay in services.
+- Event handlers should be idempotent where practical.
+- Do not hide required transactional work behind eventually consistent events.
+- Use CBA correlation IDs when SQF workflows require ordered confirmation.

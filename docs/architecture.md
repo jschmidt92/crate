@@ -1,216 +1,243 @@
-# Rust Server Architecture
+# Architecture
 
-Forge is a Rust workspace with two main crates:
+Forge uses a layered, event-driven architecture with vertical feature slices at the application boundary.
 
-- `forge-lib`: shared domain models, repository traits, services, events, and errors.
-- `forge-crate`: the Arma extension crate built as `forge_crate_x64`, with command routing, runtime wiring, persistence, and server-specific feature workflows.
-
-The server crate depends on `forge-lib`; `forge-lib` does not depend on the server.
-
-## High-Level Flow
-
-Most extension calls follow this path:
+## System Context
 
 ```mermaid
 flowchart LR
-    Arma[Arma command] --> Route[Route command]
-    Route --> Command[Command module]
-    Command --> Feature[Feature workflow]
-    Feature --> Service[forge-lib service]
-    Service --> Repository[Repository trait]
-    Repository --> Response[Return response]
+    Player[Arma player] --> SQF[forge_crate SQF addons]
+    SQF --> Extension[forge_crate_x64]
+    Extension --> Domain[forge-lib]
+    Extension --> Cache[Hot repositories]
+    Cache --> Queue[Async write queue]
+    Queue --> DB[(SurrealDB)]
+    SQF --> Browser[Preact WebUI]
+    Browser --> SQF
 
-    Feature --> Event[Optional domain event]
-    Event --> Bus[Central EventBus]
-    Bus --> Durable[DurableEventBackend]
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef boundary fill:#1c1917,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    classDef storage fill:#121214,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Extension,Domain,Cache,Queue step
+    class Player,SQF,Browser boundary
+    class DB storage
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
-The command module should stay thin. It should parse command arguments, call the appropriate workflow, serialize the result, and log failures.
+The authoritative gameplay state lives in Rust repositories. SQF owns Arma-engine state and locality. The WebUI is a presentation client and never directly accesses the extension or database.
 
-Extension callbacks travel in the other direction, from Rust/native extension code back into SQF. The SQF side registers one raw `ExtensionCallback` bridge in `arma/crate/addons/main/XEH_preInitServer.sqf`, then routes Forge callback namespaces to feature-owned CBA events:
+## Workspace Dependency Direction
 
 ```mermaid
-flowchart LR
-    Extension[ExtensionCallback] --> Main[main callback bridge]
-    Main --> Parse[fromJSON payload]
-    Parse --> Event[CBA local event]
-    Event --> Feature[feature addon handler]
-    Feature --> Client[optional client event/UI]
+flowchart TD
+    WebUI[webui Preact application] --> SQF[Arma SQF bridge]
+    SQF --> Server[forge-crate application]
+    Server --> Lib[forge-lib domain]
+    Server --> Persistence[SurrealDB adapter]
+    Persistence --> Lib
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef boundary fill:#1c1917,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class WebUI,SQF boundary
+    class Server,Lib,Persistence step
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
-Feature addons subscribe to events such as `forge_crate_refuel_price` instead of adding their own raw `ExtensionCallback` handlers.
+`forge-lib` has no dependency on Arma, arma-rs, Tokio, or SurrealDB.
 
-Interactive WebUI requests use a separate request/response path because the browser runs on the player's client while authoritative extension state lives on the server:
+## Rust Layers
+
+### Domain Library
+
+Location:
+
+```text
+lib/src/
+```
+
+Responsibilities:
+
+- `models`: entities, snapshots, views, events, receipts, and money types.
+- `repositories`: storage interfaces plus in-memory implementations.
+- `services`: validation and domain mutation.
+- `events`: event bus, handler, and publisher interfaces.
+- `shared`: domain errors and validation helpers.
+
+Services may use repository traits. They must not know about:
+
+- SQF command names.
+- JSON response envelopes.
+- SurrealDB.
+- Tokio.
+- global server event-bus instances.
+
+### Application and Extension Layer
+
+Location:
+
+```text
+arma/crate/src/
+```
+
+Responsibilities:
+
+- `lib.rs`: extension initialization and arma-rs command groups.
+- top-level domain modules such as `actor.rs` and `bank.rs`: parse command inputs, invoke workflows, serialize results.
+- `command.rs`: string-route dispatch used by chunked transport.
+- `features/<domain>`: vertical application workflows.
+- `events.rs`: central server event bus and cross-domain event handlers.
+- `persistence`: cached repositories and SurrealDB adapter.
+- `transport.rs`: request staging and response chunking.
+- `log.rs`: asynchronous aggregate and domain logging.
+
+## Command Flow
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"transparent","actorBkg":"#18181b","actorBorder":"#a57c34","actorTextColor":"#f4f4f5","signalColor":"#d6a84f","signalTextColor":"#f4f4f5","labelBoxBkgColor":"#18181b","labelBoxBorderColor":"#a57c34","labelTextColor":"#f4f4f5"}}}%%
 sequenceDiagram
-    participant UI as Preact WebUI
+    participant SQF
+    participant Command as Rust command module
+    participant Feature as Feature workflow
+    participant Service as forge-lib service
+    participant Repo as Cached repository
+    participant Queue as Persistence queue
+
+    SQF->>Command: route + string arguments
+    Command->>Feature: parsed input
+    Feature->>Service: typed use case
+    Service->>Repo: read or save
+    Repo->>Queue: nonblocking enqueue
+    Feature-->>Command: typed result
+    Command-->>SQF: JSON or Error string
+```
+
+The normal gameplay response does not wait for SurrealDB.
+
+## Repository Pattern
+
+Server repository implementations wrap shared in-memory repositories:
+
+```mermaid
+flowchart LR
+    Service --> Trait[Repository trait]
+    Trait --> Cached[Cached repository]
+    Cached --> Memory[In-memory repository]
+    Cached --> Queue[Write queue]
+    Queue --> Surreal[SurrealDB worker]
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef storage fill:#121214,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Service,Trait,Cached,Memory,Queue step
+    class Surreal storage
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
+```
+
+Special multi-record workflows use `WriteOp::Batch`, which is applied inside a SurrealDB transaction.
+
+## Event Backbone
+
+Feature workflows publish completed facts through `EventPublisher`.
+
+```mermaid
+flowchart LR
+    Workflow --> Publisher[ServerEventPublisher]
+    Publisher --> Bus[EventBus]
+    Bus --> Durable[DurableEventBackend]
+    Bus --> Bank[Bank lifecycle handler]
+    Bus --> Garage[Garage lifecycle handler]
+    Bus --> Locker[Locker lifecycle handler]
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef backbone fill:#2a2113,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Workflow,Publisher,Durable,Bank,Garage,Locker step
+    class Bus backbone
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
+```
+
+The event bus is synchronous in memory. Handlers queue durable work rather than waiting for database I/O.
+
+Current event-driven cross-domain use cases include:
+
+- `ActorCreated` provisioning downstream profiles.
+- `ActorDisconnected` cleanup for bank and storage domains.
+- `LockerTransferCommitted` audit persistence.
+- organization lifecycle audits and notifications.
+
+## SQF Layer
+
+Location:
+
+```text
+arma/crate/addons/
+```
+
+Each addon owns:
+
+- `config.cpp` and `CfgEventHandlers.hpp`.
+- `XEH_PREP.hpp` compiled function registration.
+- `XEH_preInit*.sqf` event/settings registration.
+- `XEH_postInit*.sqf` runtime startup.
+- domain functions.
+
+SQF coordination uses CBA events. A module owns its snapshot and persistence call; another module may request that action but should not construct or mutate the first module's payload.
+
+Example: locker close requests an actor save and only commits the locker after receiving the correlated actor result.
+
+## Actor Cold-Start Gate
+
+Actor initialization must not query repositories before SurrealDB hydration completes.
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"transparent","actorBkg":"#18181b","actorBorder":"#a57c34","actorTextColor":"#f4f4f5","signalColor":"#d6a84f","signalTextColor":"#f4f4f5","labelBoxBkgColor":"#18181b","labelBoxBorderColor":"#a57c34","labelTextColor":"#f4f4f5"}}}%%
+sequenceDiagram
+    participant Player
+    participant SQF as Actor SQF
+    participant Extension
+    participant DB as Persistence worker
+
+    Player->>SQF: joins mission
+    SQF->>Extension: database_ready
+    Extension-->>SQF: false
+    DB->>DB: connect, define tables, hydrate caches
+    DB->>Extension: ready=true
+    SQF->>Extension: database_ready
+    Extension-->>SQF: true
+    SQF->>Extension: actor:init
+    Extension-->>SQF: persisted actor or newly created actor
+```
+
+The SQF poll uses CBA scheduling every 250 ms and does not block the game thread.
+
+## WebUI Boundary
+
+The Preact UI is loaded in `CT_WEBBROWSER`. Requests cross four boundaries:
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"transparent","actorBkg":"#18181b","actorBorder":"#a57c34","actorTextColor":"#f4f4f5","signalColor":"#d6a84f","signalTextColor":"#f4f4f5","labelBoxBkgColor":"#18181b","labelBoxBorderColor":"#a57c34","labelTextColor":"#f4f4f5"}}}%%
+sequenceDiagram
+    participant UI as Browser
     participant Client as Client SQF
     participant Server as Server SQF
-    participant Rust as Rust extension
+    participant Rust
 
-    UI->>Client: A3API.SendAlert request
+    UI->>Client: A3API.SendAlert(JSON)
     Client->>Server: CBA server event
     Server->>Rust: extension command
-    Rust-->>Server: JSON snapshot
-    Server-->>Client: targeted CBA response
-    Client-->>UI: ExecJS forgeHostReceive
+    Rust-->>Server: JSON result
+    Server-->>Client: targeted CBA event
+    Client-->>UI: ExecJS forgeHostReceive(response)
 ```
 
-## Shared Library
-
-`lib/src/models`
-
-Domain data structures and serializable views live here. Examples:
-
-- `actor.rs`: actor snapshots and actor state.
-- `bank.rs`: money, bank profiles, accounts, and bank transactions.
-- `organization.rs`: organizations, members, invites, payday plans, and transfer result models.
-- `domain_event.rs`: the central `DomainEvent` enum.
-- `actor_event.rs` and `organization_event.rs`: domain-specific event payloads.
-- `notification.rs`: durable notification and audit record models.
-
-`lib/src/repositories`
-
-Repository traits define storage boundaries. In-memory implementations are used for tests and as hot caches in the server.
-
-`lib/src/services`
-
-Services hold domain behavior and validation. They know about repository traits, but they do not know about SurrealDB, Arma command routing, or the server event bus.
-
-`lib/src/events`
-
-The event system defines:
-
-- `DomainEventHandler`: something that reacts to a `DomainEvent`.
-- `EventBus`: dispatches events to handlers.
-- `EventPublisher`: an interface used by feature workflows so they do not depend on a global bus directly.
-
-## Server Crate
-
-`arma/crate/src/lib.rs`
-
-Initializes logging, config, persistence, the central event bus, and arma-rs command groups.
-
-`arma/crate/src/command.rs`
-
-String route dispatcher used by the transport layer.
-
-`arma/crate/src/events.rs`
-
-Owns the server-level event bus:
-
-```mermaid
-flowchart LR
-    Publisher[ServerEventPublisher] --> Bus[EventBus]
-    Bus --> Durable[DurableEventBackend]
-    Bus --> Disconnect[Actor disconnect handlers]
-    Durable --> EventRows[(domain_event rows)]
-    Durable --> AuditRows[(audit rows)]
-    Durable --> Notifications[(notification rows)]
-```
-
-This is the application event backbone. Feature workflows publish events through `EventPublisher`, and handlers react through the central bus.
-
-Actor disconnect is initiated once by the actor SQF addon. After the actor snapshot is saved, the actor feature publishes `actor.disconnected`; independent bank, garage, virtual garage, locker, and virtual locker handlers perform their cleanup through this bus.
-
-`arma/crate/src/features`
-
-Feature slices live here:
-
-```text
-features/actor/
-  init.rs
-  lifecycle.rs
-  query.rs
-```
-
-```text
-features/bank/
-  account.rs
-  lifecycle.rs
-```
-
-```text
-features/refuel/
-features/rearm/
-features/repair/
-features/medical/
-  mod.rs
-```
-
-```text
-features/garage/
-features/locker/
-features/v_garage/
-features/v_locker/
-  lifecycle.rs
-  query.rs
-  storage.rs
-```
-
-```text
-features/organization/
-  create.rs
-  invite.rs
-  membership.rs
-  payday.rs
-  query.rs
-  mod.rs
-```
-
-Each slice owns workflow orchestration for a related use case group.
-
-`arma/crate/src/persistence`
-
-Persistence-specific code:
-
-- `repository.rs`: cached repository implementations.
-- `service.rs`: background persistence worker.
-- `surreal.rs`: SurrealDB connection, hydration, and write application.
-- `model.rs`: queued write operation types and metrics.
-- `payday.rs`: transactional multi-record payday persistence.
-- `durable_events.rs`: event handler that writes domain events, audit records, and notifications.
+See [WebUI and Browser Bridge](webui.md).
 
 ## Design Rules
 
-- Keep core rules in `forge-lib` services.
-- Keep server workflow orchestration in feature modules.
-- Keep command modules thin.
-- Use repository traits in services instead of direct persistence calls.
-- Route player bank-account money movement through `BankService`.
-- For paid gameplay services, calculate service rules in the service module and charge through `BankService`.
-- Publish domain events through `EventPublisher`, not by directly calling persistence.
-- Put SurrealDB-specific logic under `arma/crate/src/persistence`.
-
-## Paid Service Flow
-
-```mermaid
-sequenceDiagram
-    participant SQF as Arma/SQF
-    participant Cmd as Server command
-    participant Feature as Feature slice
-    participant Service as Service module
-    participant Bank as BankService
-    participant Repo as BankRepository
-
-    SQF->>Cmd: repair/rearm/refuel/heal request
-    Cmd->>Feature: parsed input
-    Feature->>Service: complete service
-    Service->>Service: validate and price
-    Service->>Bank: withdraw_from_account
-    Bank->>Repo: save updated bank profile
-    Service-->>Feature: ServiceReceipt
-    Feature-->>Cmd: ServiceReceipt
-    Cmd-->>SQF: JSON receipt or Error
-```
-
-## Vertical Slice Direction
-
-The project is moving toward a hybrid vertical-slice structure:
-
-- Shared domain models, services, repository traits, and errors remain in `forge-lib`.
-- Server workflows move into `arma/crate/src/features/<feature>/<slice>.rs`.
-- Command modules expose the Arma surface and delegate to feature workflows.
-
-This keeps shared business rules reusable while making feature work easier to locate.
+- Keep command functions thin.
+- Keep business rules in services.
+- Keep Arma locality and engine operations in SQF.
+- Keep workflow orchestration in feature slices.
+- Keep persistence adapters out of the domain library.
+- Publish events after successful mutation.
+- Use transactions for multi-record money movement.
+- Treat generated WebUI assets as build output.
+- Keep persistent identifiers and money serialized in stable view models.

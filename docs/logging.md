@@ -2,6 +2,8 @@
 
 The extension writes logs beneath `@forge_crate/logs` by default. `forge_crate.log` is the aggregate stream, while domain files contain focused records for areas such as actors, banking, organizations, persistence, events, garages, lockers, notifications, and vehicle services.
 
+The logging thread creates the log directory and files when they do not already exist.
+
 ```text
 @forge_crate/logs/
   forge_crate.log

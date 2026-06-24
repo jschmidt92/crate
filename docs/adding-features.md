@@ -1,226 +1,188 @@
-# Adding Rust Server Features
+# Adding Features
 
-This guide is the practical checklist for adding a new Rust server feature.
+This guide covers a complete feature from shared domain rules through Rust, SQF, persistence, and optional WebUI.
 
-## Before You Start
+## Choose the Ownership Boundary
 
-Identify what kind of change you are making:
+| Concern | Location |
+| --- | --- |
+| Domain entity, event, or view | `lib/src/models` |
+| Storage interface | `lib/src/repositories` |
+| Business rules | `lib/src/services` |
+| Server use-case orchestration | `arma/crate/src/features/<domain>` |
+| Extension command parsing | `arma/crate/src/<domain>.rs` |
+| String transport route | `arma/crate/src/command.rs` |
+| SurrealDB adapter | `arma/crate/src/persistence` |
+| Arma engine/locality behavior | `arma/crate/addons/<domain>` |
+| Browser presentation | `webui/src/features/<domain>` |
 
-- Domain rule: belongs in `forge-lib`.
-- Server workflow: belongs in `arma/crate/src/features`.
-- Arma command surface: belongs in `arma/crate/src/<command_group>.rs` and possibly `command.rs`.
-- Persistence mechanism: belongs in `arma/crate/src/persistence`.
-- Cross-cutting side effect: usually belongs behind a domain event handler.
-
-## Recommended Flow
+## End-to-End Flow
 
 ```mermaid
 flowchart LR
-    Model[Domain model] --> Repository[Repository trait]
-    Repository --> Service[Domain service]
-    Service --> Slice[Feature slice]
-    Slice --> Command[Command route]
-    Slice --> Event[Domain event]
-    Event --> Durable[Audit and notifications]
-    Command --> Tests[Tests and validation]
-    Durable --> Tests
+    Model --> Repository
+    Repository --> Service
+    Service --> Feature
+    Feature --> Command
+    Feature --> Event
+    Command --> SQF
+    SQF --> UI
+    Repository --> Persistence
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef boundary fill:#1c1917,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Model,Repository,Service,Feature,Command,Event step
+    class SQF,UI,Persistence boundary
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
-1. Add or update domain models.
-2. Add or update repository traits if new storage access is needed.
-3. Add or update service methods for validation and core rules.
-4. Add a server feature slice for workflow orchestration.
-5. Publish domain events through `EventPublisher` if needed.
-6. Add durable audit/notification side effects if needed.
-7. Add or update command routes.
-8. Add tests.
-9. Run `cargo fmt` and `cargo test`.
+## 1. Model
 
-## Domain Models
+- Add the smallest stable domain type.
+- Use view models when serialized output should differ from stored data.
+- Serialize money through `MoneyAmount`.
+- Keep secrets private; expose booleans such as `pin_set`.
+- Export public types from `models/mod.rs`.
 
-Add shared data types under:
+## 2. Repository
 
-```text
-lib/src/models
-```
+- Define domain-required operations, not database queries.
+- Update the in-memory implementation.
+- Add focused repository/service tests.
+- Implement the cached server adapter.
 
-Use domain-specific files when possible. For example:
+If persistent:
 
-- Organization data: `organization.rs`
-- Organization events: `organization_event.rs`
-- Notifications/audit: `notification.rs`
+- add a static repository instance.
+- add hydration.
+- add the table.
+- add cache-only hydration helpers.
 
-Export new public models from:
+## 3. Service
 
-```text
-lib/src/models/mod.rs
-```
+Services:
 
-## Repository Traits
-
-Repository traits live under:
-
-```text
-lib/src/repositories
-```
-
-Add repository methods when services need new storage operations. Keep traits focused on domain storage needs, not database-specific details.
-
-In-memory repositories should be updated alongside the trait so service tests can exercise the behavior without SurrealDB.
-
-Server cached repository implementations live in:
-
-```text
-arma/crate/src/persistence/repository.rs
-```
-
-## Services
-
-Services live under:
-
-```text
-lib/src/services
-```
-
-Services should:
-
-- validate inputs.
-- enforce business rules.
-- mutate domain models.
+- validate.
+- enforce permissions and invariants.
+- mutate models.
 - call repository traits.
-- return domain results.
+- return typed results.
 
-Services should not:
+Services do not parse JSON, call SQF, or use SurrealDB directly.
 
-- know about Arma commands.
-- know about SurrealDB.
-- directly publish server events.
-- serialize responses.
+## 4. Feature Slice
 
-## Feature Slices
-
-Server feature workflows live under:
+Create:
 
 ```text
-arma/crate/src/features
+arma/crate/src/features/<domain>/
 ```
 
-Organization is the current example:
+Organize by use case, for example:
 
 ```text
-features/organization/
-  create.rs
-  invite.rs
-  membership.rs
-  payday.rs
-  query.rs
-  mod.rs
+lifecycle.rs
+query.rs
+storage.rs
+transfer.rs
 ```
 
-A feature slice should orchestrate one use case or a small use-case group. It can call services, publish events, and compose persistence helpers through interfaces.
+The feature composes services, event publishers, and application ports.
 
-Good slice responsibilities:
+## 5. Domain Events
 
-- call the domain service.
-- call `EventPublisher`.
-- call a workflow-specific port, such as `PaydayApplier`.
-- return typed results to command modules.
+Publish an event when independent consumers need to react to a completed action.
 
-Avoid putting JSON serialization or Arma-specific argument parsing in feature slices.
+Do not use an event when all records must commit atomically. Use a direct workflow plus `WriteOp::Batch`.
 
-## Commands
+Add:
 
-Arma command groups live in files such as:
+1. payload model.
+2. `DomainEvent` variant.
+3. stable name.
+4. publisher call.
+5. handlers.
+6. durable mapping when needed.
+
+## 6. Extension Commands
+
+Add the command to:
+
+- the arma-rs group.
+- `command.rs` when chunked transport needs it.
+
+Command functions should only:
+
+- parse strings or JSON.
+- invoke the feature.
+- serialize views.
+- log errors.
+
+Update [Command Reference](command-reference.md).
+
+## 7. SQF Addon
+
+Follow the existing addon structure:
 
 ```text
-arma/crate/src/organization.rs
-arma/crate/src/actor.rs
-arma/crate/src/bank.rs
+addons/<domain>/
+  config.cpp
+  CfgEventHandlers.hpp
+  script_component.hpp
+  XEH_PREP.hpp
+  XEH_preInit*.sqf
+  XEH_postInit*.sqf
+  functions/
 ```
 
-Command functions should:
+Use CBA events for network and module coordination. Keep engine state capture in the owning addon.
 
-- parse string arguments.
-- parse JSON payloads when needed.
-- call a feature workflow.
-- serialize the result.
-- log failures.
+## 8. WebUI
 
-Transport route strings are listed in:
+When needed:
 
-```text
-arma/crate/src/command.rs
-```
+1. add a component under `webui/src/features`.
+2. use `requestFromArma`.
+3. extend the SQF namespace router.
+4. add an authoritative server handler.
+5. return the standard response envelope.
+6. include centered loading and error states.
+7. avoid unguarded origin-dependent APIs such as `localStorage`.
 
-When adding a command, update both the arma-rs group and transport dispatcher if the command should be available through both paths.
+## 9. Persistence
 
-## Events
+Use ordinary cached repository saves for one record.
 
-Use domain events when other parts of the system need to react after a successful action.
+Use a batch for:
 
-Add events by updating:
+- transfers.
+- organization payday.
+- any invariant spanning multiple persisted records.
 
-```text
-lib/src/models/<domain>_event.rs
-lib/src/models/domain_event.rs
-lib/src/models/mod.rs
-```
+Remember that cache mutation occurs before asynchronous durability.
 
-Publish events from the feature workflow through `EventPublisher`.
-
-Do not call persistence directly to create audit rows or notifications. Add durable side effects to:
-
-```text
-arma/crate/src/persistence/durable_events.rs
-```
-
-## Persistence
-
-Persistence code lives under:
-
-```text
-arma/crate/src/persistence
-```
-
-Use:
-
-- `repository.rs` for cached repository implementations.
-- `service.rs` for the background persistence worker.
-- `surreal.rs` for SurrealDB connection and query execution.
-- `model.rs` for queued write operation models.
-- feature-specific files, such as `payday.rs`, for special transactional write flows.
-
-The server keeps hot in-memory repositories and queues writes to the persistence worker. Gameplay command responses do not wait for SurrealDB.
-
-For multi-record money movement, use a batch transaction pattern like `persistence/payday.rs`.
-
-## Testing
-
-Minimum expectations:
-
-- Service behavior should have unit tests in `forge-lib`.
-- New validation rules should have focused tests.
-- Repository trait changes should be covered by in-memory repositories.
-- Workflow-level behavior should be tested either in service tests or future feature tests.
-
-Run:
+## 10. Validation
 
 ```powershell
-cargo fmt
-cargo test
+cargo fmt --check
+cargo test --workspace
+Set-Location webui
+npm run build:arma
+Set-Location ..\arma\crate
+hemtt check
+hemtt build
 ```
 
-## Checklist
+Then test a cold server start when the feature depends on hydrated data.
 
-Use this checklist before calling a feature done:
+## Completion Checklist
 
-- Models are in the right domain file.
-- New models are exported from `models/mod.rs`.
-- Service rules are covered by tests.
-- Commands are thin and do not contain core business logic.
-- Events are published through `EventPublisher`.
-- Durable side effects are in `persistence/durable_events.rs`.
-- Persistence changes update hydration if a new table is introduced.
-- `docs/persistence.md` lists new persistent tables.
-- `cargo fmt` passes.
-- `cargo test` passes.
+- Ownership boundaries are clear.
+- Domain rules have tests.
+- Commands are documented.
+- SQF functions have headers.
+- CBA events have stable names and correlation where needed.
+- New tables hydrate correctly.
+- Multi-record writes are transactional.
+- WebUI works under Arma's opaque browser origin.
+- Docs and Mermaid diagrams match the implemented flow.

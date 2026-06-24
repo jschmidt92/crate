@@ -23,7 +23,7 @@ Main files:
 ### Physical Locker Access & Networked Proxy
 Physical locker access points are Eden-placed containers or objects with variable names `locker`, `locker_1`, `locker_2`, and so on. The locker addon discovers names through `locker_999` and adds an `Open Locker` action to each valid object. The placed object is only an access terminal, so the server clears and locks its ordinary shared cargo. 
 
-Persisted player cargo is materialized in a hidden, server-created networked inventory proxy unique to that request, captured when the inventory closes, and saved through `locker:save` before the server deletes the proxy. Networked proxies are required because Arma does not support backpacks inside local-only containers during multiplayer. Multiple players can still use the same terminal concurrently because each request receives a separate proxy.
+Persisted player cargo is materialized in a hidden, server-created networked inventory proxy unique to that request, captured when the inventory closes, and saved through `locker:commit` before the server deletes the proxy. Networked proxies are required because Arma does not support backpacks inside local-only containers during multiplayer. Multiple players can still use the same terminal concurrently because each request receives a separate proxy.
 
 ### Actor Synchronization Guard & Fail-Closed Transaction
 Closing a locker publishes a correlated CBA actor-save request. The actor addon captures and persists its own post-transfer loadout through `actor:save`; only its success response allows the locker addon to normalize and persist its own proxy through `locker:commit`. This fail-closed ordering prevents the locker from accepting deposited equipment while the persisted actor still owns it. 
@@ -58,7 +58,7 @@ These server workflows use the same slice names:
 Disconnect cleanup is internal to the `ActorDisconnected` event handlers and is not exposed as feature commands.
 
 ## Current Commands
-- `garage:*`
-- `locker:*`
-- `v_garage:*`
-- `v_locker:*`
+- `garage:init`, `garage:get`, `garage:save`, `garage:delete`
+- `locker:init`, `locker:get`, `locker:save`, `locker:commit`, `locker:delete`
+- `v_garage:init`, `v_garage:get`, `v_garage:save`, `v_garage:delete`
+- `v_locker:init`, `v_locker:get`, `v_locker:save`, `v_locker:delete`

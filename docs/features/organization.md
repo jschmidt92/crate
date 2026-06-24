@@ -37,6 +37,14 @@ flowchart TD
     Switch --> NewMember[Member of invited organization]
     CEO --> Disband[Disband organization]
     Disband --> CEOFallback[Default organization]
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef boundary fill:#1c1917,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    classDef exit fill:#1f1515,stroke:#b91c1c,color:#f4f4f5,stroke-width:2px
+    class Accept,Create,Member,CEO,Switch,NewMember step
+    class Start,Default,MemberFallback,CEOFallback boundary
+    class Leave,Disband exit
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
 The two terminal default-organization nodes represent the same fallback organization. They are shown separately to keep each lifecycle path readable. The CEO has no direct leave transition. Disbanding is the only path from player-organization CEO back to the default organization, and it moves every member with them.
@@ -58,6 +66,14 @@ flowchart TD
     Event --> Durable[DurableEventBackend]
     Durable --> Audit[(Audit record)]
     Durable --> Notifications[(Recipient notifications)]
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef durable fill:#2a2113,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    classDef storage fill:#121214,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Request,Validate,Credits,Transaction,Event step
+    class Durable durable
+    class Audit,Notifications storage
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
 ## Code Organization (Vertical Slices)

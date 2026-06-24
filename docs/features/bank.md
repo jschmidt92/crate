@@ -1,31 +1,84 @@
 # Bank Feature
 
-Main files:
+## Ownership
+
 - `lib/src/models/bank.rs`
 - `lib/src/services/bank.rs`
 - `lib/src/repositories/bank.rs`
 - `arma/crate/src/bank.rs`
-- `arma/crate/src/features/bank/*`
-- `arma/crate/src/persistence/payday.rs`
+- `arma/crate/src/features/bank/`
+- `arma/crate/addons/bank/`
+- `arma/crate/addons/webui/`
+- `webui/src/features/bank/`
 
-## Mechanics
+## Profile Model
 
-### Bank Profiles
-Bank profiles hold player cash, account balances, pending earnings, a salted ATM PIN hash, and up to ten recent ledger entries. Player bank-account reads and money movement go through `BankService`. 
+A player bank profile contains:
 
-### Money Transfers
-Player transfers persist the sender debit and recipient credit in one queued transaction batch. Organization payday applies the organization debit and recipient bank credits the same way, with recipient credits prepared through `BankService` before persistence batches the writes.
+- UID.
+- cash carried by the player.
+- account UUID and account balance.
+- pending earnings.
+- salted ATM PIN hash.
+- up to ten recent transactions.
 
-### WebUI Requests
-The bank WebUI uses a server-authoritative request/response bridge. Browser requests travel through `JSDialog` to SQF, are forwarded to the server, and call the Rust extension using the requesting player's UID. The resulting bank snapshot is returned to that player's browser with `ctrlWebBrowserAction ["ExecJS", ...]`. The UI does not update balances optimistically.
+Public views serialize money as decimal strings and expose only `pin_set`, never the PIN hash.
 
-## Code Organization
-Bank server workflows are organized as:
-- `account.rs`: Initialize, read, deposit, withdraw, and transfer player bank funds.
+## Money Movement
 
-Bank disconnect cleanup is an internal `ActorDisconnected` event handler rather than a public extension command.
+- deposit moves cash into the bank account.
+- withdrawal moves account funds into cash.
+- transfer debits one profile and credits another.
+- pending earnings are accumulated separately and explicitly submitted to the account.
+- service fees and organization payday credits also use `BankService`.
 
-## Current Commands
+Multi-profile saves use queued batches.
+
+## WebUI
+
+The UI is server-authoritative:
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"transparent","actorBkg":"#18181b","actorBorder":"#a57c34","actorTextColor":"#f4f4f5","signalColor":"#d6a84f","signalTextColor":"#f4f4f5","labelBoxBkgColor":"#18181b","labelBoxBorderColor":"#a57c34","labelTextColor":"#f4f4f5"}}}%%
+sequenceDiagram
+    participant UI
+    participant ClientSQF
+    participant ServerSQF
+    participant Rust
+
+    UI->>ClientSQF: bank::deposit
+    ClientSQF->>ServerSQF: CBA server event
+    ServerSQF->>Rust: bank:deposit using player UID
+    Rust-->>ServerSQF: updated profile
+    ServerSQF-->>UI: correlated response
+```
+
+The UI does not optimistically modify balances.
+
+## Access Terminals
+
+Objects named `bank` or `bank_1` through `bank_999` receive `Open Bank`. The bank addon publishes a local open request; the WebUI addon owns display creation.
+
+## Organization Snapshot
+
+The bank UI may display:
+
+- organization name.
+- player role (`CEO` or `Member`).
+- organization funds.
+
+These values are read-only in the player bank UI.
+
+## Digital Card
+
+The final four displayed digits use:
+
+1. numeric characters from the bank account UUID.
+2. player UID digits.
+3. `0000`.
+
+## Commands
+
 - `bank:init`
 - `bank:get`
 - `bank:deposit`

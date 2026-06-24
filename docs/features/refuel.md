@@ -20,6 +20,14 @@ flowchart TD
     Stopped[refuel:stopped] --> Complete[FuelService::complete_with_price]
     Complete --> Bank[BankService::withdraw_from_account]
     Bank --> Receipt[ServiceReceipt]
+
+    classDef step fill:#18181b,stroke:#a57c34,color:#f4f4f5,stroke-width:1.5px
+    classDef event fill:#1c1917,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    classDef success fill:#2a2113,stroke:#d6a84f,color:#f4f4f5,stroke-width:2px
+    class Session,Complete,Bank step
+    class Started,Tick,Stopped event
+    class Receipt success
+    linkStyle default stroke:#a57c34,stroke-width:1.5px
 ```
 
 ## Current Commands
