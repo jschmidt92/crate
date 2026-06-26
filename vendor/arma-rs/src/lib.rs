@@ -332,7 +332,7 @@ impl ExtensionBuilder {
     #[must_use]
     /// Builds the extension.
     pub fn finish(self) -> Extension {
-        #[expect(unused_mut, reason = "Only used on Windows release")]
+        #[allow(unused_mut, reason = "Only used on Windows release")]
         let mut pre218 = false;
         #[allow(unused_variables)]
         let function_name =
