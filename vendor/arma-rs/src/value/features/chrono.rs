@@ -26,16 +26,19 @@ impl<T: TimeZone> IntoArma for DateTime<T> {
 impl FromArma for NaiveDateTime {
     fn from_arma(s: String) -> Result<Self, FromArmaError> {
         let arma_date: [i64; 7] = FromArma::from_arma(s)?;
-        Ok(NaiveDate::from_ymd(
+        let date = NaiveDate::from_ymd_opt(
             arma_date[0].try_into().unwrap(),
             arma_date[1].try_into().unwrap(),
             arma_date[2].try_into().unwrap(),
         )
-        .and_hms_milli(
+        .ok_or_else(|| FromArmaError::custom("invalid date"))?;
+
+        date.and_hms_milli_opt(
             arma_date[3].try_into().unwrap(),
             arma_date[4].try_into().unwrap(),
             arma_date[5].try_into().unwrap(),
             arma_date[6].try_into().unwrap(),
-        ))
+        )
+        .ok_or_else(|| FromArmaError::custom("invalid time"))
     }
 }

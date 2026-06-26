@@ -165,7 +165,7 @@ impl Extension {
         if clear_call_context && !self.pre218_clear_context_override {
             self.context_manager.replace(None);
         }
-        let function = if let Ok(cstring) = unsafe { std::ffi::CStr::from_ptr(function).to_str() } {
+        let function = if let Ok(cstring) = std::ffi::CStr::from_ptr(function).to_str() {
             cstring.to_string()
         } else {
             return 1;

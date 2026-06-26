@@ -6,6 +6,7 @@ pub trait IntoArma {
     fn to_arma(&self) -> Value;
 }
 
+/// Wrapper for returning a pre-built [`Value`] directly to Arma.
 pub struct DirectReturn(Value);
 impl Value {
     /// A workaround to return a value directly to Arma

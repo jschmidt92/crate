@@ -32,6 +32,7 @@ impl FeatureFlags {
     }
 
     /// Create a new `FeatureFlags` from the given bits
+    #[allow(dead_code, reason = "public helper kept for feature flag decoding")]
     pub fn from_bits(bits: u64) -> Self {
         let mut flags = Self::default();
         flags.set_context_stack_trace(bits & RV_CONTEXT_STACK_TRACE != 0);

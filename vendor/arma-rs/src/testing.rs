@@ -127,7 +127,7 @@ impl Extension {
         );
         if let Some(args) = args_pointer {
             for arg in args {
-                let _ = unsafe { std::ffi::CString::from_raw(arg) };
+                let _ = std::ffi::CString::from_raw(arg);
             }
         }
         (
